@@ -17,7 +17,7 @@ def vararg_callback(option, opt, value, parser):
 
 if __name__ == "__main__":
 
-	usage = "usage: %prog -t stepname,stepval -r steprange -v variables[,]"
+	usage = "usage: %prog -t stepname,stepval -r steprange -v variables[,], -b breakpoint, -e entrypoint"
 	
 	parser = OptionParser(usage=usage)
 	parser.add_option('-t', '--timestep', type='string', dest='step',
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 			if len(step) == 0:
 				continue
 			
-			record=', '.join([entry, step_name, step, var, point, fault]);
+			record='; '.join([entry, step_name, step, var, point, fault]);
 			s = str(record);
 			s=s.lstrip('(').rstrip(')') + '\n';
 			
