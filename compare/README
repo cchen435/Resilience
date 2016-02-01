@@ -1,0 +1,4 @@
+
+
+The scripts in the fold compares the data with a normal execution 
+to check whehter a injected fault can expand to other locations

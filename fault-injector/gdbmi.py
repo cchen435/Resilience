@@ -14,8 +14,42 @@ import os.path
 import sys
 import subprocess as sp
 import fcntl
+import re
 
 import pdb
+
+
+'''
+read_file: read faults config from file, file contents should
+	follow some formats:
+	(entry), (step_name), (step_val), (mem), (point), (fault)
+'''
+def read_file(filename):
+	faults = list()
+	fault = dict()
+	step = dict()
+	try:
+		handler = open(filename, 'r')
+	except:
+		print 'open file error'
+		sys.exit(1)
+	
+	for line in handler:
+		tmp = line.strip()
+		if len(tmp) == 0:
+			continue
+		tmp = tmp.split(';')
+		fault['entry'] = tmp[0].strip();
+		step['name'] = tmp[1].strip();
+		step['val'] = tmp[2].strip();
+		fault['step'] = step;
+		fault['mem'] = tmp[3].strip();
+		fault['point'] = tmp[4].strip();
+		fault['fault'] = tmp[5].strip();
+		faults.append(fault.copy());
+	
+	handler.close()
+	return faults
 
 
 class Session():
@@ -110,11 +144,13 @@ class Session():
         if value is None:
             cmd = '%s %s' % ('-break-watch', var)
         else:
+            value=value.strip()
             if self.lang in 'cCc++C++':
                 cmd = '%s %s==%s' % ('-break-watch', var, value)
             elif self.lang in 'fortranFortran':
-                cmd = '%s %s .eq. %s' % ('--break-watch', var, value)
-            
+                cmd = '%s %s.eq.%s' % ('-break-watch', var, value)
+  
+        print 'DEBUG (watch_insert): %s' % cmd
         result = self.__send(cmd)
 
 
@@ -139,6 +175,7 @@ class Session():
     def inject(self, var, fault_ratio):
         self.__send('-break-delete') 
 
+        fault_ratio = float(fault_ratio)
         # check whether the var is accessible by listing local variables
         cmd = '-stack-list-variables 0'
         if self.lang in ['fortran', 'Fortran', 'FORTRAN']:
@@ -148,9 +185,9 @@ class Session():
                     sys.exit('var \"%s\" is not accessible in current frame' % var)
         elif self.lang in 'cCc++C++':
             result = self.__send(cmd)
-            if var.split('->')[0] not in result \
-                    and var.split('.')[0] not in result:
-                sys.exit('var \"%s\" is not accessible in current frame' % var)
+            tmp = re.findall('\w+', var)[0]
+            if tmp not in result:
+                sys.exit('var \"%s\" is not accessible in current frame %s' % (tmp, result))
 
         print '\n---------------------------->>>>>'
         print 'Injecting the fault (%4.6f) into variable \"%s\"' % (fault_ratio, var)
@@ -172,6 +209,7 @@ class Session():
         
     # read the subprocess outout
     def __readline(self):
+        p = self.process
         return p.stdout.readline().strip('\n')
 
     def __handle(self, line):
@@ -230,34 +268,8 @@ if __name__ == '__main__':
     s.start()
     s.watch_insert('i', '50')
     s.exec_continue()
-   '''
-   '''
-    while True:
-        status = s.exec_continue()
-        print 'status', status 
-        if status == 'watchpoint-trigger':
-            break
-   '''
-   '''
     print 'i:', s.get('i')
     s.inject('f', 1.5)
     s.exec_continue()
-    '''
-    '''
-    while True:
-        status = s.exec_continue()
-        print 'status', status 
-        if status == 'exited-normally':
-            break
-    '''
-    '''
-    #s.exec_continue()
-    #s.wait_for('*stopped')
-    #s.watch_insert('i', '98')
-    #s.exec_continue()
-    #print 'i:', s.get('i')
-    #s.inject('f', 6.5)
-    #s.exec_continue()
-    #s.exec_continue()
     s.finish()
 '''

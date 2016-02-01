@@ -12,40 +12,6 @@ import gdbmi
 this script implement an injector using gdb
 '''
 
-
-'''
-read_file: read faults config from file, file contents should
-	follow some formats:
-	(entry), (step_name), (step_val), (mem), (point), (fault)
-'''
-def read_file(filename):
-	faults = list()
-	fault = dict()
-	step = dict()
-	try:
-		handler = open(filename, 'r')
-	except:
-		print 'open file error'
-		sys.exit(1)
-	
-	for line in handler:
-		tmp = line.strip()
-		if len(tmp) == 0:
-			continue
-		tmp = tmp.split(',')
-		fault['entry'] = tmp[0];
-		step['name'] = tmp[1];
-		step['val'] = tmp[2];
-		fault['step'] = step;
-		fault['mem'] = tmp[3];
-		fault['point'] = tmp[4];
-		fault['fault'] = tmp[5];
-		faults.append(fault.copy());
-	
-	handler.close()
-	return faults
-
-
 if __name__ == "__main__":
 	usage = "usage: %prog fault-file, exec, args for exec"
 
@@ -66,7 +32,7 @@ if __name__ == "__main__":
 	print 'exec args:', exec_args
 	print 'faults:', faults_file
 
-	faults = read_file(faults_file);
+	faults = gdbmi.read_file(faults_file);
 	print 'number of faults: ', len(faults)
 	for i in faults:
 		print i
@@ -83,7 +49,7 @@ if __name__ == "__main__":
                 var = fault['mem']                  # the varilabe where the fault will be injected 
 
                 fault_val = fault['fault']
-                s = Session(target = target, \
+                s = gdbmi.Session(target = target, \
                         args = exec_args, \
                         language = 'c')
 
