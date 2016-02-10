@@ -46,10 +46,9 @@ def main():
         if prev is None or curr is None:
             print 'data is none'
             continue
-        print type(prev), prev.shape
-        print type(curr), curr.shape
-        print ''
 
+        ratio = abs(curr)/(abs(prev) + 1) - 1
+        detect.detect(ratio)
 
 
 if __name__ == '__main__':
