@@ -88,13 +88,13 @@ def gribget(fname):
 
 
 # general interface
-def getfile(fname):
+def getdata(fname):
     file_name, file_extension = os.path.splitext(fname)
-    if file_extension == 'grb':
+    if file_extension == '.grb':
         return gribget(fname)
-    elif file_extension == 'nc':
+    elif file_extension == '.nc':
         return ncget(fname)
-    elif file_extension == 'bp':
+    elif file_extension == '.bp':
         return bpget(fname)
     else:
         sys.exit('unknown file formate')
