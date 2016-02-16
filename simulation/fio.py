@@ -27,6 +27,8 @@ class DataBase():
             sys.exit('workspace (%s) not exist'%path)
 
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        files.sort()
+
         self.workspace = path
         if len(files) == 0:
             sys.exit('no file found in %s, please examine the setup' % path)
@@ -167,6 +169,10 @@ class DataBase():
 
         f1 = os.path.join(self.workspace, self.files[self.curr])
         f2 = os.path.join(self.workspace, self.files[self.curr+1])
+        
+        #print f1
+        #print f2
+
         self.curr += 1
         tmp, file_extension = os.path.splitext(f1)
         if file_extension == '.grb':
@@ -188,6 +194,9 @@ class DataBase():
 
     def get_progress(self):
         return float(self.curr)/(self.timesteps)
+
+    def get_curr(self):
+        return self.curr
 
     def list_variables(self):
         fname = os.path.join(self.workspace, self.files[0])

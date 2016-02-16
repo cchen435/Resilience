@@ -154,13 +154,14 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.savefig('.'.join([name, 'pdf']))
     plt.clf()
 
-def plot_line(fname, data, Title = 'Change ratio'):
+def plot_line(fname, data, Title = 'Change ratio', yup = None, ydown = None):
     array = numpy.array(data)
     mean = array.mean()
     array[abs(array) > 100 * abs(mean)] = mean
     size = array.size
     x = range(size)
-    plt.ylim(-2, 1)
+    if yup is not None and ydown is not None:
+        plt.ylim(ydown, yup)
     plt.plot(x, array)
     plt.savefig('.'.join([fname, 'pdf']))
     plt.clf()
@@ -213,18 +214,22 @@ if __name__ == '__main__':
         plot_hist('location8', ratio[key][:, 8112])
         plot_hist('location9', ratio[key][:, 16224])
         plot_hist('location10', ratio[key][:, 32449])
-        print 'max stdv:', numpy.array(stdv[key]).max()
-        print 'min stdv:', numpy.array(stdv[key]).min()
         plot_line('change1', ratio[key][:, 63])
         plot_line('change2', ratio[key][:, 126])
         plot_line('change3', ratio[key][:, 253])
         plot_line('change5', ratio[key][:, 1014])
         plot_line('change8', ratio[key][:, 8112])
         
+        plot_line('change', numpy.mean(ratio[key], axis=1), yup = -0.93, ydown = -0.95)
+        plot_line('stdvline', numpy.std(ratio[key], axis=1))
+        
         print 'ratio shape:', numpy.array(ratio[key]).shape
         print 'stdv shape:', numpy.array(stdv[key]).shape
         print 'stdv at location 5:', numpy.array(stdv[key]).ravel()[1014]
         print 'stdv at location 8:', numpy.array(stdv[key]).ravel()[8112]
+        print 'max stdv:', numpy.array(stdv[key]).max()
         print 'min stdv:', numpy.array(stdv[key]).min()
-        print 'min stdv:', numpy.array(stdv[key]).min()
+
+        tmp = numpy.mean(ratio[key], axis=1)
+        print 'change ratio value from 8 to 20:', tmp[8:20]
 
