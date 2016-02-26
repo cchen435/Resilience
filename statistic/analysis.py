@@ -4,140 +4,62 @@ This module is for analysis climate data
 in format of grib
 Author: Chao Chen
 '''
+
+from optparse import OptionParser
+
 import matplotlib
 matplotlib.use('GTK')
 import matplotlib.pyplot as plt
+
 import math
 import sys
 import numpy
 import os
-import gc 
 
-
-# glob can get files in directory
-import glob
-
-# pygrib for read GRIB files
-import pygrib
-
-from fio import getdata
+import fio
 
 #control arguments
 #numpy.set_printoptions(precision=6)
 numpy.set_printoptions(suppress=True)
 
 DEBUG=0
-DEBUG2=1
-
-
-'''
-calculate the change ratio between two successive
-time steps for variable "variable" at the level "level"
-'''
-def calc_change_ratio(files):
-    if DEBUG:
-        print("working on files:");
-        print(files)
-
-    ratio = dict()
-
-    # get number of files
-    size = len(files)
-    
-    ''' just do first half of files now '''
-    size /= 3 
-
-    i = 1;
-    while i < size:
-        
-        if i % 10 == 0:
-            print '### log: finished', float(i)/size
-
-        prev = files[i-1]
-        curr = files[i]
-
-        if DEBUG:
-            print("doing calculation on file: prev-->" + prev + " , curr-->" + curr);
-
-        # open grib file
-        curr_fp = getdata(curr)
-        prev_fp = getdata(prev)
-        if i == 1:
-            keys = curr_fp.keys()
-        
-        i+=1
-
-
-        for key in keys:
-            if curr_fp.has_key(key) == False:
-                sys.exit('variable %s not found in %s' % ( key, curr) )
-            if prev_fp.has_key(key) == False:
-                sys.exit('variable %s not found in %s' % ( key, prev) )
-
-            curr_values = abs(curr_fp[key])
-            prev_values = abs(prev_fp[key])
-
-            #prev_values[prev_values == 0] = 1
-            prev_values += 1
-            diff = curr_values/prev_values - 1
-
-            if ratio.has_key(key) == False:
-                ratio[key] = [diff]
-            else:
-                ratio[key].append(diff)
-            
-            # recall memory
-            del curr_values, prev_values, diff
-            gc.collect()
-
-    print '### log: finished', float(i)/size
-    for key in ratio.keys():
-        ratio[key] = numpy.array(ratio[key]);
-        gc.collect()
-    return ratio
-
-## end of calc_change_ratio
+DEBUG2=0
 
 '''
 get the parameters and levels for each parameters in the file
 '''
 
-## calc statistic of a 3D cube along with
+## calc statistic of a 2D aray along with
 ## the time step (1st) dimention
 def calc_statistic(ratio):
-    mean = dict()
-    maxv = dict()
-    minv = dict()
-    stdv = dict()
 
-    for key in ratio.keys():
-        chg_ratio = ratio[key]    
-        chg_ratio_array = numpy.array(chg_ratio)
-        (steps, size) = chg_ratio_array.shape
-        
-        mean_var = numpy.zeros(size, dtype = chg_ratio_array.dtype)
-        maxv_var = numpy.zeros(size, dtype = chg_ratio_array.dtype)
-        minv_var = numpy.zeros(size, dtype = chg_ratio_array.dtype)
-        stdv_var = numpy.zeros(size, dtype = chg_ratio_array.dtype)
-        
-        for i in range(size):
-            mean_var[i] = chg_ratio_array[:, i].mean()
-            maxv_var[i] = chg_ratio_array[:, i].max()
-            minv_var[i] = chg_ratio_array[:, i].min()
-            stdv_var[i] = chg_ratio_array[:, i].std()
+    (steps, size) = ratio.shape
+    
+    # statistics alone with timestep, it calcs 
+    # the statistic for each location
+    mean = numpy.zeros(size, dtype = ratio.dtype)
+    maxv = numpy.zeros(size, dtype = ratio.dtype)
+    minv = numpy.zeros(size, dtype = ratio.dtype)
+    stdv = numpy.zeros(size, dtype = ratio.dtype)
+    
+    mean = numpy.mean(ratio, axis=0)
+    maxv = numpy.max(ratio, axis=0)
+    minv = numpy.min(ratio, axis=0)
+    stdv = numpy.std(ratio, axis=0)
 
-        if mean.has_key(key) == False:
-            mean[key] = [mean_var]
-            maxv[key] = [maxv_var]
-            minv[key] = [minv_var]
-            stdv[key] = [stdv_var]
-        else:
-            mean[key].append(mean_var)
-            maxv[key].append(maxv_var)
-            stdv[key].append(stdv_var)
-            minv[key].append(minv_var)
+    # statistics alone with array, it calcs
+    # the statistic for each time step
+    tmean = numpy.zeros(steps, dtype = ratio.dtype)
+    tmaxv = numpy.zeros(steps, dtype = ratio.dtype)
+    tminv = numpy.zeros(steps, dtype = ratio.dtype)
+    tstdv = numpy.zeros(steps, dtype = ratio.dtype)
 
-    return (maxv, minv, mean, stdv)
+    tmean = numpy.mean(ratio, axis=1)
+    tmaxv = numpy.max(ratio, axis=1)
+    tminv = numpy.min(ratio, axis=1)
+    tstdv = numpy.std(ratio, axis=1)
+
+    return (maxv, minv, mean, stdv, tmaxv, tminv, tmean, tstdv)
 ## end of calc_statistic
 
 def plot_hist(name, data, title = 'Distribution of Change Ratio'):
@@ -154,12 +76,13 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.savefig('.'.join([name, 'pdf']))
     plt.clf()
 
-def plot_line(fname, data, Title = 'Change ratio', yup = None, ydown = None):
+def plot_line(fname, data, title = 'Change ratio', yup = None, ydown = None):
     array = numpy.array(data)
     mean = array.mean()
     array[abs(array) > 100 * abs(mean)] = mean
     size = array.size
     x = range(size)
+    plt.ticklabel_format(useOffset=False, style='plain')
     if yup is not None and ydown is not None:
         plt.ylim(ydown, yup)
     plt.plot(x, array)
@@ -170,66 +93,51 @@ def plot_line(fname, data, Title = 'Change ratio', yup = None, ydown = None):
 
 ## start point, main function in C
 if __name__ == '__main__':
-
-    if len(sys.argv) == 1:
-        sys.exit('please specify a workspace')
-    # list all files in curr dir
-    workspace = os.path.join(os.getcwd(), sys.argv[1])
-
-    files = [f for f in os.listdir(workspace) if os.path.isfile(os.path.join(workspace, f))]
-    files.sort()
-
-    #print files
-    files = [os.path.join(workspace, f) for f in files]
-
-    #cont = raw_input("please evaluate the file orders here: continue(y) or stop(n)")
-    cont = 'y'
-
-    while True:
-        if cont == 'n' or cont == 'N':
-            sys.exit(0)
-        elif cont == 'y' or cont == 'Y':
-            break
-        else:
-            cont = raw_input("input not recognized. \n please evaluate \
-                    the file orders here: continue(y) or stop(n)")
-    ratio = calc_change_ratio(files)
-    (maxc, minc, mean, stdv) = calc_statistic(ratio)
-
     
-    # remove extreme value
+    usage='usage: %prog workspace variable [size]'
+    parser = OptionParser(usage=usage)
+    (opts, args) = parser.parse_args()
+    if len(args) < 2:
+        parser.print_help()
+        sys.exit('arguments error')
 
-    for key in mean.keys():
-        plot_hist('mean', mean[key], title='Mean Change Ratio')
-        plot_hist('max', maxc[key], title='Max Change Ratio')
-        plot_hist('min', minc[key], title='Min Change Ratio')
-        plot_hist('stdv', stdv[key], title='standard diviation')
-        plot_hist('location1', ratio[key][:, 63])
-        plot_hist('location2', ratio[key][:, 126])
-        plot_hist('location3', ratio[key][:, 253])
-        plot_hist('location4', ratio[key][:, 507])
-        plot_hist('location5', ratio[key][:, 1014])
-        plot_hist('location6', ratio[key][:, 2028])
-        plot_hist('location7', ratio[key][:, 4056])
-        plot_hist('location8', ratio[key][:, 8112])
-        plot_hist('location9', ratio[key][:, 16224])
-        plot_hist('location10', ratio[key][:, 32449])
-        plot_line('change1', ratio[key][:, 63])
-        plot_line('change2', ratio[key][:, 126])
-        plot_line('change3', ratio[key][:, 253])
-        plot_line('change5', ratio[key][:, 1014])
-        plot_line('change8', ratio[key][:, 8112])
+    workspace = args[0]
+    variable = args[1]
+    if len(args) == 3:
+        size = int(args[2])
+    else:
+        size = None
+
+    datasets = fio.DataBase(workspace, variable)
+
+    ratio_list = list()
+    while not datasets.done():
+        print '\n\n Progress. Finished: %.02f%%' % (datasets.get_progress() * 100)
+        (prev, curr) = datasets.get()
+        if prev is None or curr is None:
+            print 'Finished'
+            break
+
+        if size is not None and datasets.get_curr() == size:
+            print 'Finished with up to expected timesteps'
+            break
         
-        plot_line('change', numpy.mean(ratio[key], axis=1), yup = -0.93, ydown = -0.95)
-        plot_line('stdvline', numpy.std(ratio[key], axis=1))
+        tmp = abs(curr)/(abs(prev) + 1) - 1
+        ratio_list.append(tmp)
+
+    ratio = numpy.array(ratio_list)
+    (maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
+
+    index = numpy.argmax(stdv)
+
+    plot_hist('mean', mean, title='Mean Change Ratio')
+    plot_hist('max', maxc, title='Max Change Ratio')
+    plot_hist('min', minc, title='Min Change Ratio')
+    plot_hist('stdv', stdv, title='standard diviation')
+    plot_hist('hist', ratio[:, index], title='Change Ratio at Loc with max stdv')
+    plot_line('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
+    plot_line('tmean', tmean, title='tmean')
+    plot_line('tstdv', tstdv, title='tstdv')
+    plot_line('tmax', tmax, title='tmax')
+    plot_line('tmin', tmin, title='tmin')
         
-        print 'ratio shape:', numpy.array(ratio[key]).shape
-        print 'stdv shape:', numpy.array(stdv[key]).shape
-        print 'stdv at location 5:', numpy.array(stdv[key]).ravel()[1014]
-        print 'stdv at location 8:', numpy.array(stdv[key]).ravel()[8112]
-        print 'max stdv:', numpy.array(stdv[key]).max()
-        print 'min stdv:', numpy.array(stdv[key]).min()
-
-        tmp = numpy.mean(ratio[key], axis=1)
-        print 'change ratio value from 8 to 20:', tmp[8:20]
-

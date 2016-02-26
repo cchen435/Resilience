@@ -9,7 +9,7 @@ import detector
 
 
 def main():
-    usage='usage: %prog workspace method [-s windows] [-t threshold] [-v variable]'
+    usage='usage: %prog workspace method -s windows -t threshold -v variable'
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--size', type='int', dest='win',
             help='window size')
@@ -26,9 +26,9 @@ def main():
         sys.exit('need to set at least one value for %s' % \
                 'either window size or threhold value')
     print args
-    if len(args) != 2:
+    if len(args) != 2 or None in opts:
         parser.print_help()
-        sys.exit('argument not correct')
+        sys.exit('argument not correct, or opts error')
     workspace = args[0]
     method = args[1]
     win_size = opts['win']
@@ -39,7 +39,7 @@ def main():
     datasets = fio.DataBase(workspace, variable)
     #datasets.list_variables()
 
-    detect = detector.Detector(method, win_size)
+    detect = detector.Detector(method, win_size, threshold)
 
     faults = 0
     faults_steps = list()

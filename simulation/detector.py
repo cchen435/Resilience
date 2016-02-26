@@ -20,7 +20,9 @@ class Detector():
         if method is None:
             sys.exit('should setup one of following \
                     methods: linear, mean, and threshold')
-        if (method == 'linear' or method == 'mean' or method == 'mean_linear') and win_size is None:
+        if (method == 'linear' or method == 'mean' or \
+                method == 'mean_linear') and \
+                (win_size is None or threshold is None):
             sys.exit('the method is linear or mean, need to %s' % 
                     'setup the window size')
         if method == 'threshold' and threshold is None:
@@ -56,11 +58,10 @@ class Detector():
         # if actual ratio is large than predict value, 
         # treat it as a fault 
         #up = means + 1*stddivs
-        up = means + 0.001
 
-        print means[0], up[0]
+        diff = abs(ratio - means)
+        flag = diff < self.thresh * stddivs
 
-        flag = ratio < up 
         if numpy.sum(flag) < numpy.size(flag):
             if DEBUG:
                 (indexes,) = numpy.where(flag==False)
@@ -109,26 +110,16 @@ class Detector():
         (a, b) = numpy.linalg.lstsq(Coeff, data)[0]
 
         predict = a * self.win_size + b;
-        up = predict + 20 * stddivs + 0.03
+        diff = abs(predict - ratio)
 
-        diff1 = predict - ratio
-        diff2 = up - ratio
+        if DEBUG:
+            diff1 = predict - ratio
 
-        flag = ratio <= up
+        flag = diff <= self.thresh * stddivs
         index = numpy.argwhere(flag==False)
 
         if numpy.sum(flag) < numpy.size(flag):
             if DEBUG:
-                '''
-                (indexes,) = numpy.where(flag==False)
-                print 'locations: ', indexes
-                print 'a = ', a[indexes]
-                print 'b = ', b[indexes]
-                print 'pred = ', predict[indexes]
-                print 'up = ', up[indexes]
-                print 'ratio = ', abs(ratio)[indexes]
-                print 'std = ', stddivs[indexes]
-                '''
                 print 'x = ', x
                 index = index[0]
                 print 'locations:', index
@@ -136,7 +127,6 @@ class Detector():
                 print 'stdv:', stddivs[index]
                 print 'a = %f, b = %f' % (a[index], b[index])
                 print 'predict(%f) - ratio(%f):%f' %( predict[index], ratio[index], diff1[index])
-                print 'up(%f) - ratio(%f): %f'%( up[index], ratio[index], diff2[index])
 
 
             faulty = True
@@ -175,12 +165,13 @@ class Detector():
         (a, b) = numpy.linalg.lstsq(Coeff, data)[0]
 
         predict = a * self.win_size + b;
-        up = predict + 50 * stddivs
 
-        diff1 = predict - mean_ratio
-        diff2 = up - mean_ratio
+        if DEBUG:
+            diff1 = predict - mean_ratio
 
-        flag = mean_ratio <= up
+        diff = abs(predict - mean_ratio)
+        flag = diff < (float(self.thresh) * stddivs)
+
         index = numpy.argwhere(flag==False)
 
         if DEBUG: 
@@ -188,18 +179,17 @@ class Detector():
             print 'history:', data 
             print 'stdv:', stddivs 
             print 'a = %f, b = %f' % (a, b) 
-            print 'predict(%f) - ratio(%f):%f' %( predict, mean_ratio, diff1)
-            print 'up(%f) - ratio(%f): %f'%( up, mean_ratio, diff2)
+            print 'predict(%f) - ratio(%f):%f, %f' %( predict, mean_ratio, diff1,diff)
+            print 'flag: ', flag, "flag size:", numpy.size(flag)
+            print 'thresh:', self.thresh, 'thresh * stdv', float(self.thresh) * stddivs
+
         
         if numpy.sum(flag) < numpy.size(flag):
             print 'x = ', x
             print 'history:', data 
             print 'stdv:', stddivs 
             print 'a = %f, b = %f' % (a, b) 
-            print 'predict(%f) - ratio(%f):%f' %( predict, mean_ratio, diff1)
-            print 'up(%f) - ratio(%f): %f'%( up, mean_ratio, diff2)
-
-
+            print 'predict(%f) - ratio(%f):%f' %( predict, mean_ratio, diff)
             faulty = True
 
         self.history.remove(self.history[0])

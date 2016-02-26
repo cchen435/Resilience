@@ -8,28 +8,11 @@ import time
 import os
 
 '''
-this script implement an injector using gdb
+this script implement a very simple job manager
+it starts up the process and monitoring the exit
+status of the job, and decide to restart the job 
+or not
 '''
-
-'''
-init: create a gdb subprocess to debug the 
-	target. target is an executable, args is 
-	a list of arguments (inputs) required to 
-	execute the target
-'''
-def init(target, args):
-	# starting GDB to debug the target
-	print 'target:', target
-	print 'cmd', ['gdb', '--args', target] + args
-	p = sp.Popen(['gdb', '--args', target] + args, 
-					stdin=sp.PIPE);
-	
-	return p;
-
-def finish(proc):
-	print 'quit gdb'
-	proc.stdin.write('quit\n');	
-	proc.wait();
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -39,8 +22,8 @@ if __name__ == "__main__":
 
     parser.add_argument('exec', help='executable binary' )
     parser.add_argument('args', nargs='*', help='executable arguments if any')
-    parser.add_argument('-r', '--restart', dest='restart', nargs='*', 
-                help='arguments used when restart')
+    parser.add_argument('-r', '--restart', dest='restart', nargs='*',
+                        help='arguments used when restart')
 
     args = parser.parse_args()
     args = vars(args)
@@ -52,11 +35,17 @@ if __name__ == "__main__":
 
     print(exec_file, exec_args, restart_args, exec_file + exec_args)
 
-    status = sp.call(exec_file + exec_args, shell=True)
+    start_time = time.time()
+    status = sp.call(exec_file + exec_args)
 
-    while status != 0:
-        status = sp.call(exec_file + restart_args, shell=True)
+    while status == 23:
+        print "\n\nJob Resart ...... \n\n\n"
+        status = sp.call(exec_file + restart_args)
 
+    print "status: ", status;
+
+    end_time = time.time();
+    print "\n\nJob finish time (execution duration): ", (end_time - start_time)
 
 
 

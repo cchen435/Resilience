@@ -26,7 +26,6 @@ read_file: read faults config from file, file contents should
 '''
 def read_file(filename):
 	faults = list()
-	fault = dict()
 	step = dict()
 	try:
 		handler = open(filename, 'r')
@@ -35,6 +34,7 @@ def read_file(filename):
 		sys.exit(1)
 	
 	for line in handler:
+	        fault = dict()
 		tmp = line.strip()
 		if len(tmp) == 0:
 			continue
@@ -42,14 +42,16 @@ def read_file(filename):
 		fault['entry'] = tmp[0].strip();
 		step['name'] = tmp[1].strip();
 		step['val'] = tmp[2].strip();
-		fault['step'] = step;
+		fault['step'] = step.copy();
 		fault['mem'] = tmp[3].strip();
 		fault['point'] = tmp[4].strip();
 		fault['fault'] = tmp[5].strip();
-		faults.append(fault.copy());
-	
+                faults.append(fault.copy());
+                fault.clear()
+                
 	handler.close()
-	return faults
+
+        return faults
 
 
 class Session():
@@ -236,6 +238,8 @@ class Session():
     def wait_for(self, token):
         while True:
             line = self.__readline()
+            if len(line) == 0:
+                continue
             #print line.rstrip('\n')
             if line.startswith(token):
                 line = line.lstrip(token)

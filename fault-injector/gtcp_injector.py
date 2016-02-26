@@ -40,9 +40,8 @@ if __name__ == "__main__":
 
 	folder = 0
 	currvar = ''
+       
 	for fault in faults:
-		print 'inject the fault:', fault
-		print ''
 		
                 step_var = fault['step']['name']    # the step variable name
                 step    = fault['step']['val']      # the step when the fault will be injected 
@@ -59,7 +58,10 @@ if __name__ == "__main__":
                 s.inject(var, fault_val)
 		s.exec_continue()
                 s.finish()
+		print '\ninjected fault:', fault
+                print "\n\n"
 
+                '''
                 # moving data
 		var = var.replace('->', '.')
 		var = var[:var.find('[')]
@@ -92,7 +94,6 @@ if __name__ == "__main__":
 			cmd = 'ln -s ' + src + dst
 			print 'link dir \'0\' to correct data: ', cmd
 			os.system(cmd);
-
+                '''
 		time.sleep(2)
 		print '\n\n\n\n'
-
