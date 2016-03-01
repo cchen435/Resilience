@@ -27,7 +27,6 @@ from fio import getdata
 numpy.set_printoptions(suppress=True)
 
 DEBUG=0
-DEBUG2=1
 
 
 '''
@@ -154,17 +153,39 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.savefig('.'.join([name, 'pdf']))
     plt.clf()
 
-def plot_line(fname, data, Title = 'Change ratio'):
+def plot_lines(fname, data, Title = 'Change ratio'):
     array = numpy.array(data)
-    mean = array.mean()
-    array[abs(array) > 100 * abs(mean)] = mean
-    size = array.size
+    style=['ro-', 'b*-', 'gs-', 'kD-', 'mX-'];
+    plots = list();
+    (items, size) = array.shape
     x = range(size)
     plt.ylim(-2, 1)
-    plt.plot(x, array)
+    for i in range(items):
+	plot = plt.plot(x, array[i])
+    	plots.append(plot)
+
+    labels = ["Location %d"%x for x in range(items)]
+    plt.legend(tuple(plots), tuple(labels), 'best', numpoints=1)
     plt.savefig('.'.join([fname, 'pdf']))
     plt.clf()
 
+def plot_mean_stdv(fname, data, Title = 'Mean and Stdv of Change Ratios for Each Location'):
+    array = numpy.array(data)
+    x = range(size)
+    plt.ylim(-2, 1)
+
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    plot1 = ax1.plot(x, array[0], 'ro-')
+    plot2 = ax2.plot(x, array[1], 'b*-')
+
+    ax1.set_xlabel('Data Points');
+    ax1.set_ylabel('Mean', color='r')
+    ax2.set_ylabel('Stdv', color='b')
+    
+    plt.legend((plot1, plot2), ('mean', 'stdv'), 'best', numpoints=1)
+    plt.savefig('.'.join([fname, 'pdf']))
+    plt.clf()
 
 
 ## start point, main function in C
@@ -199,27 +220,22 @@ if __name__ == '__main__':
     # remove extreme value
 
     for key in mean.keys():
-        plot_hist('mean', mean[key], title='Mean Change Ratio')
+        locations = list();
+	plot_hist('mean', mean[key], title='Mean Change Ratio')
         plot_hist('max', maxc[key], title='Max Change Ratio')
         plot_hist('min', minc[key], title='Min Change Ratio')
         plot_hist('stdv', stdv[key], title='standard diviation')
-        plot_hist('location1', ratio[key][:, 63])
-        plot_hist('location2', ratio[key][:, 126])
-        plot_hist('location3', ratio[key][:, 253])
-        plot_hist('location4', ratio[key][:, 507])
-        plot_hist('location5', ratio[key][:, 1014])
-        plot_hist('location6', ratio[key][:, 2028])
-        plot_hist('location7', ratio[key][:, 4056])
-        plot_hist('location8', ratio[key][:, 8112])
-        plot_hist('location9', ratio[key][:, 16224])
-        plot_hist('location10', ratio[key][:, 32449])
         print 'max stdv:', numpy.array(stdv[key]).max()
         print 'min stdv:', numpy.array(stdv[key]).min()
-        plot_line('change1', ratio[key][:, 63])
-        plot_line('change2', ratio[key][:, 126])
-        plot_line('change3', ratio[key][:, 253])
-        plot_line('change5', ratio[key][:, 1014])
-        plot_line('change8', ratio[key][:, 8112])
+   
+	plot_mean_stdv('distribution', [mean, stdv]) 
+	locations.append(ratio[key][:, 63]);
+	locations.append(ratio[key][:, 126]);
+	locations.append(ratio[key][:, 253]);
+	locations.append(ratio[key][:, 1014]);
+	locations.append(ratio[key][:, 8112]);
+
+        plot_lines('location', locations, "Relative Changes in Data Values for Randomly Selected Data Points") 
         
         print 'ratio shape:', numpy.array(ratio[key]).shape
         print 'stdv shape:', numpy.array(stdv[key]).shape
