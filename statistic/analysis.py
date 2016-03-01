@@ -23,7 +23,75 @@ import fio
 numpy.set_printoptions(suppress=True)
 
 DEBUG=0
-DEBUG2=0
+
+
+'''
+calculate the change ratio between two successive
+time steps for variable "variable" at the level "level"
+'''
+def calc_change_ratio(files):
+    if DEBUG:
+        print("working on files:");
+        print(files)
+
+    ratio = dict()
+
+    # get number of files
+    size = len(files)
+    
+    ''' just do first half of files now '''
+    size /= 3 
+
+    i = 1;
+    while i < size:
+        
+        if i % 10 == 0:
+            print '### log: finished', float(i)/size
+
+        prev = files[i-1]
+        curr = files[i]
+
+        if DEBUG:
+            print("doing calculation on file: prev-->" + prev + " , curr-->" + curr);
+
+        # open grib file
+        curr_fp = getdata(curr)
+        prev_fp = getdata(prev)
+        if i == 1:
+            keys = curr_fp.keys()
+        
+        i+=1
+
+
+        for key in keys:
+            if curr_fp.has_key(key) == False:
+                sys.exit('variable %s not found in %s' % ( key, curr) )
+            if prev_fp.has_key(key) == False:
+                sys.exit('variable %s not found in %s' % ( key, prev) )
+
+            curr_values = abs(curr_fp[key])
+            prev_values = abs(prev_fp[key])
+
+            #prev_values[prev_values == 0] = 1
+            prev_values += 1
+            diff = curr_values/prev_values - 1
+
+            if ratio.has_key(key) == False:
+                ratio[key] = [diff]
+            else:
+                ratio[key].append(diff)
+            
+            # recall memory
+            del curr_values, prev_values, diff
+            gc.collect()
+
+    print '### log: finished', float(i)/size
+    for key in ratio.keys():
+        ratio[key] = numpy.array(ratio[key]);
+        gc.collect()
+    return ratio
+
+## end of calc_change_ratio
 
 '''
 get the parameters and levels for each parameters in the file
@@ -76,19 +144,42 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.savefig('.'.join([name, 'pdf']))
     plt.clf()
 
-def plot_line(fname, data, title = 'Change ratio', yup = None, ydown = None):
+def plot_lines(fname, data, Title = 'Change ratio', yup = None, ydown = None):
     array = numpy.array(data)
-    mean = array.mean()
-    array[abs(array) > 100 * abs(mean)] = mean
-    size = array.size
+    style=['ro-', 'b*-', 'gs-', 'kD-', 'mX-'];
+    plots = list();
+    (items, size) = array.shape
     x = range(size)
     plt.ticklabel_format(useOffset=False, style='plain')
     if yup is not None and ydown is not None:
         plt.ylim(ydown, yup)
-    plt.plot(x, array)
+    
+    for i in range(items):
+	plot = plt.plot(x, array[i])
+    	plots.append(plot)
+
+    labels = ["Location %d"%x for x in range(items)]
+    plt.legend(tuple(plots), tuple(labels), 'best', numpoints=1)
     plt.savefig('.'.join([fname, 'pdf']))
     plt.clf()
 
+def plot_mean_stdv(fname, data, Title = 'Mean and Stdv of Change Ratios for Each Location'):
+    array = numpy.array(data)
+    x = range(size)
+    plt.ylim(-2, 1)
+
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    plot1 = ax1.plot(x, array[0], 'ro-')
+    plot2 = ax2.plot(x, array[1], 'b*-')
+
+    ax1.set_xlabel('Data Points');
+    ax1.set_ylabel('Mean', color='r')
+    ax2.set_ylabel('Stdv', color='b')
+    
+    plt.legend((plot1, plot2), ('mean', 'stdv'), 'best', numpoints=1)
+    plt.savefig('.'.join([fname, 'pdf']))
+    plt.clf()
 
 
 ## start point, main function in C
@@ -128,6 +219,7 @@ if __name__ == '__main__':
     ratio = numpy.array(ratio_list)
     (maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
 
+    '''
     index = numpy.argmax(stdv)
 
     plot_hist('mean', mean, title='Mean Change Ratio')
@@ -140,4 +232,24 @@ if __name__ == '__main__':
     plot_line('tstdv', tstdv, title='tstdv')
     plot_line('tmax', tmax, title='tmax')
     plot_line('tmin', tmin, title='tmin')
+    '''
+
+    for key in mean.keys():
+        locations = list();
+	plot_hist('mean', mean[key], title='Mean Change Ratio')
+        plot_hist('max', maxc[key], title='Max Change Ratio')
+        plot_hist('min', minc[key], title='Min Change Ratio')
+        plot_hist('stdv', stdv[key], title='standard diviation')
+        print 'max stdv:', numpy.array(stdv[key]).max()
+        print 'min stdv:', numpy.array(stdv[key]).min()
+   
+	plot_mean_stdv('distribution', [mean, stdv]) 
+	
+        locations.append(ratio[key][:, 63]);
+	locations.append(ratio[key][:, 126]);
+	locations.append(ratio[key][:, 253]);
+	locations.append(ratio[key][:, 1014]);
+	locations.append(ratio[key][:, 8112]);
+
+        plot_lines('location', locations, "Relative Changes in Data Values for Randomly Selected Data Points") 
         
