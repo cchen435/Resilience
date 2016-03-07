@@ -11,26 +11,6 @@ import os
 this script implement an injector using gdb
 '''
 
-'''
-init: create a gdb subprocess to debug the 
-	target. target is an executable, args is 
-	a list of arguments (inputs) required to 
-	execute the target
-'''
-def init(target, args):
-	# starting GDB to debug the target
-	print 'target:', target
-	print 'cmd', ['gdb', '--args', target] + args
-	p = sp.Popen(['gdb', '--args', target] + args, 
-					stdin=sp.PIPE);
-	
-	return p;
-
-def finish(proc):
-	print 'quit gdb'
-	proc.stdin.write('quit\n');	
-	proc.wait();
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
             usage='%(prog)s exec [exec_args] [-r restart_exec_args]',
@@ -46,17 +26,22 @@ if __name__ == "__main__":
     args = vars(args)
     print (args['exec'], args['args'], args['restart'])
 
-    exec_file = [args['exec']]
+    exec_file = ['mpirun -np 32 -hostfile hostfile ' + args['exec']]
     exec_args = args['args']
     restart_args = args['restart']
 
     print(exec_file, exec_args, restart_args, exec_file + exec_args)
 
-    status = sp.call(exec_file + exec_args, shell=True)
+    print 'exec: ', ' '.join(exec_file+exec_args)
 
-    while status != 0:
-        status = sp.call(exec_file + restart_args, shell=True)
+    start = time.time()
+    status = sp.call([' '.join(exec_file + exec_args)], shell=True)
 
+    while status == 23:
+        status = sp.call([' '.join(exec_file + restart_args)], shell=True)
+
+    end = time.time()
+    print "Total execution time: ", (end - start)
 
 
 

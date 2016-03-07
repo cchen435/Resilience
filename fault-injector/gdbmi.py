@@ -21,35 +21,35 @@ import pdb
 
 '''
 read_file: read faults config from file, file contents should
-	follow some formats:
-	(entry), (step_name), (step_val), (mem), (point), (fault)
+    follow some formats:
+    (entry), (step_name), (step_val), (mem), (point), (fault)
 '''
 def read_file(filename):
-	faults = list()
-	fault = dict()
-	step = dict()
-	try:
-		handler = open(filename, 'r')
-	except:
-		print 'open file error'
-		sys.exit(1)
-	
-	for line in handler:
-		tmp = line.strip()
-		if len(tmp) == 0:
-			continue
-		tmp = tmp.split(';')
-		fault['entry'] = tmp[0].strip();
-		step['name'] = tmp[1].strip();
-		step['val'] = tmp[2].strip();
-		fault['step'] = step;
-		fault['mem'] = tmp[3].strip();
-		fault['point'] = tmp[4].strip();
-		fault['fault'] = tmp[5].strip();
-		faults.append(fault.copy());
-	
-	handler.close()
-	return faults
+    faults = list()
+    fault = dict()
+    step = dict()
+    try:
+        handler = open(filename, 'r')
+    except:
+        print 'open file error'
+        sys.exit(1)
+    
+    for line in handler:
+        tmp = line.strip()
+        if len(tmp) == 0:
+            continue
+        tmp = tmp.split(';')
+        fault['entry'] = tmp[0].strip();
+        step['name'] = tmp[1].strip();
+        step['val'] = tmp[2].strip();
+        fault['step'] = step;
+        fault['mem'] = tmp[3].strip();
+        fault['point'] = tmp[4].strip();
+        fault['fault'] = tmp[5].strip();
+        faults.append(fault.copy());
+    
+    handler.close()
+    return faults
 
 
 class Session():
@@ -236,8 +236,13 @@ class Session():
     def wait_for(self, token):
         while True:
             line = self.__readline()
-            #print line.rstrip('\n')
-            if line.startswith(token):
+            #print "\n\n<<<<<<<<<<<-----------------------"
+            #print "expected token:", token, 'line:', line.rstrip('\n')
+            #print "---------------------->>>>>>>>>>>>\n\n"
+            if len(line) == 0:
+                print line
+            #elif line.startswith(token):
+            elif line.find(token) >= 0:
                 line = line.lstrip(token)
                 return line
             elif line[0] in '+~=$@*^&':
