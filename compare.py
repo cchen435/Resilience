@@ -58,7 +58,7 @@ def main(argv):
             break;
         
         output_buf = list();
-        rfile = os.path.join(workspace, i+'_res.txt')
+        rfile = os.path.join(workspace, i+'_'+variable+'_res.txt')
 
         # compareing file by file
         while not normal_datasets.done():
