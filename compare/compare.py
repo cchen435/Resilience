@@ -28,14 +28,22 @@ def main(argv):
 
     if dirs[0] != '0':
         sys.exit('directory for correct/normal data not found')
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
     normal_path = os.path.join(workspace, dirs[0])
     dirs.remove('0')
     if len(dirs) == 0:
         sys.exit('no faulty data found in working directory');
 
     files = [ f for f in os.listdir(normal_path) if os.path.isfile(os.path.join(normal_path, f))]
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
     if len(files) == 0:
         sys.exit('No data found for correct data');
     files.sort()
@@ -43,11 +51,19 @@ def main(argv):
     file_ext = files[0].split('.')[-1]
 
     # comparing data in other dirs with data normal dir
+<<<<<<< HEAD
     prefix = '  '   
     for i in dirs:
         print '%s dir %s:'%(prefix, i)
         path = os.path.join(workspace, i) 
         
+=======
+    prefix = '  '
+    for i in dirs:
+        print '%s dir %s:'%(prefix, i)
+        path = os.path.join(workspace, i)
+
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
         # get the file list and file extention in faulty directory
         tmp = [f for f in os.listdir(path)]
         tmp.sort()
@@ -72,7 +88,11 @@ def main(argv):
             faulty = 0;
             normal_file = os.path.join(normal_path, f);
             faulty_file = os.path.join(path, f);
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
             if file_ext == 'bp':
                 ndata = bpget(normal_file)
                 fdata = bpget(faulty_file)
@@ -80,7 +100,11 @@ def main(argv):
                 ndata = ncget(normal_file)
                 fdata = ncget(faulty_file)
 
+<<<<<<< HEAD
             # check whther two files has the same variables 
+=======
+            # check whther two files has the same variables
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
             nvars = ndata.keys()
             fvars = fdata.keys()
             nvars.sort()
@@ -96,7 +120,11 @@ def main(argv):
                 fdata_array = fdata[var]
                 if ndata_array.size != fdata_array.size:
                     print 'faulty because of different array dimension (%d, %d) for \
+<<<<<<< HEAD
                             file %s' % (ndata_array.size, fdata_array.size, f)
+=======
+                                    file %s' % (ndata_array.size, fdata_array.size, f)
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
 
                 max_diff = 0.0
                 min_diff = 100000000.0
@@ -132,7 +160,11 @@ def main(argv):
                 else:
                     output_buf[var] = [res_tmp.copy()]
             timestep = timestep + 1
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6
         fh = open(rfile, 'w')
         fmt = "%10s %10s %20s %20s %20s %20s\n"
         fh.write(fmt % (' ', 'timestep', 'total', 'min', 'max', 'mean'))
@@ -144,4 +176,7 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv)
+<<<<<<< HEAD
     
+=======
+>>>>>>> 91b2c173540cf7728cbf55ab87ae06d2284160b6

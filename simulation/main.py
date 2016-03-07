@@ -9,7 +9,7 @@ import detector
 
 
 def main():
-    usage='usage: %prog workspace, method, [-s windows], [-t threshold]'
+    usage='usage: %prog workspace method -s windows -t threshold -v variable'
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--size', type='int', dest='win',
             help='window size')
@@ -22,34 +22,42 @@ def main():
     opts = vars(opts)
     
     if opts['win'] is None and opts['thresh'] is None:
+        parser.print_help()
         sys.exit('need to set at least one value for %s' % \
                 'either window size or threhold value')
     print args
-    if len(args) != 2:
+    if len(args) != 2 or None in opts:
         parser.print_help()
-        sys.exit('argument not correct')
+        sys.exit('argument not correct, or opts error')
     workspace = args[0]
     method = args[1]
     win_size = opts['win']
     threshold = opts['thresh']
     variable = opts['var']
-    print workspace, method, win_size, threshold
+    print workspace, method, win_size, threshold, variable
 
     datasets = fio.DataBase(workspace, variable)
-    datasets.list_variables()
+    #datasets.list_variables()
 
-    detect = detector.Detector(method, win_size)
-    
+    detect = detector.Detector(method, win_size, threshold)
+
+    faults = 0
+    faults_steps = list()
     while not datasets.done():
-        print datasets.get_progress()
+        print '\n\nFinished %.2f%%' % (datasets.get_progress() * 100)
         (prev, curr)=datasets.get()
         if prev is None or curr is None:
             print 'data is none'
             continue
 
         ratio = abs(curr)/(abs(prev) + 1) - 1
-        detect.detect(ratio)
+        result = detect.detect(ratio)
+        if result is True:
+            faults += 1
+            faults_steps.append(datasets.get_curr())
+            print 'detect error at timestep %d' % datasets.get_curr()
 
-
+    print 'number of faults %d, total steps %d' % (faults, datasets.get_timesteps())
+    print 'time steps where a fault is detected: ', faults_steps
 if __name__ == '__main__':
     main()

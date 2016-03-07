@@ -8,7 +8,10 @@ import time
 import os
 
 '''
-this script implement an injector using gdb
+this script implement a very simple job manager
+it starts up the process and monitoring the exit
+status of the job, and decide to restart the job 
+or not
 '''
 
 if __name__ == "__main__":
@@ -19,8 +22,8 @@ if __name__ == "__main__":
 
     parser.add_argument('exec', help='executable binary' )
     parser.add_argument('args', nargs='*', help='executable arguments if any')
-    parser.add_argument('-r', '--restart', dest='restart', nargs='*', 
-                help='arguments used when restart')
+    parser.add_argument('-r', '--restart', dest='restart', nargs='*',
+                        help='arguments used when restart')
 
     args = parser.parse_args()
     args = vars(args)
