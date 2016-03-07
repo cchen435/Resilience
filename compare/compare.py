@@ -5,7 +5,7 @@ import sys
 
 
 # import self defined io routines
-from fio import ncget, bpget
+from fio import ncget, bpget2
 
 
 
@@ -74,8 +74,8 @@ def main(argv):
             faulty_file = os.path.join(path, f);
 
             if file_ext == 'bp':
-                ndata = bpget(normal_file)
-                fdata = bpget(faulty_file)
+                ndata = bpget2(normal_file)
+                fdata = bpget2(faulty_file)
             elif file_ext == 'nc':
                 ndata = ncget(normal_file)
                 fdata = ncget(faulty_file)

@@ -19,6 +19,18 @@ def ncget(fname):
     fh.close()
     return variables
 
+
+# bpget2 using bp2nc to convert the file to netcdf 
+# and then using ncget to read the data. 
+def bpget2(fname):
+    variables = dict()
+    ncfile = '.'.join([fname.split('.')[0], 'nc']);
+    cmd = ' '.join(['bp2ncd', fname, ncfile])
+    os.system(cmd)
+    return ncget(ncfile)
+
+
+# bpget using bp2ascii to get the data out. 
 def bpget(fname):
     variables = dict()
     tmpfile = '/tmp/fault'
