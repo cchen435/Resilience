@@ -21,7 +21,7 @@ def main(argv):
     if len(argv) > 2: 
         variable = argv[2]
     
-    print 'workspace: %s, variable: %s' % (workspace, varialbe)
+    print 'workspace: %s, variable: %s' % (workspace, variable)
 
     # get subdirectory where store the acture data
     dirs = [ x for x in os.listdir(workspace) \
@@ -44,10 +44,10 @@ def main(argv):
     
     # comparing data in other dirs with data in normal dir
     for i in dirs:
-        print '%s dir %s:'%(prefix, i)
+        print '%s dir %s:'%(workspace, i)
         path = os.path.join(workspace, i) 
         
-        normal_datesets = fio.DataBase(normal_path, variable);
+        normal_datasets = fio.DataBase(normal_path, variable);
         faulty_datasets = fio.DataBase(path, variable)    
         
         normal_files = normal_datasets.get_files()
@@ -84,7 +84,7 @@ def main(argv):
                         min_diff = tmp
                     mean_diff = mean_diff + tmp
             
-            mean_diff = mean_diff/(total+1)
+            mean_diff = mean_diff/ndata.size
             res_tmp = dict()
             timestep = normal_datasets.get_curr();
             res_tmp['step'] = timestep
@@ -99,7 +99,7 @@ def main(argv):
         fh.write(fmt % (' ', 'timestep', 'total', 'min', 'max', 'mean'))
         for f in output_buf:
             fh.write(fmt % \
-                     (var, str(f['step']), str(f['total']),        \
+                     (variable, str(f['step']), str(f['total']),        \
                       str(f['min']), str(f['max']), str(f['mean']) \
                      )     \
                     )

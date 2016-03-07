@@ -201,7 +201,7 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
 
 def plot_mean_stdv(fname, data, \
                    Title = 'Mean and Stdv of Change Ratios for Each Location', \
-                   xlabel = None):
+                   xlabel = None, ydown = -1.5, yup = 1.5):
     array = numpy.array(data)
     (tmp, size) = array.shape
     x = numpy.array(range(size))
@@ -220,9 +220,9 @@ def plot_mean_stdv(fname, data, \
 
     plt.xlim(0, size)
     ax1.set_ylabel('Mean of Change Percentage', color='r')
-    ax1.set_ylim(-0.5,0.5)
+    ax1.set_ylim(ydown,yup)
     ax2.set_ylabel('Stdv of Change Percentage', color='b')
-    ax2.set_ylim(-0.5,0.5)
+    ax2.set_ylim(ydown,yup)
     ax1.legend(plots, labs)
     plt.title(Title)
     plt.savefig('.'.join([fname, 'pdf']))
@@ -294,7 +294,7 @@ if __name__ == '__main__':
     plot_lines('location', locations, \
             title="Relative Changes in Data Values for Randomly" + \
                   "Selected Data Points", \
-            ydown = -0.5, yup=0.5)
+            ydown = -1.0, yup=0.0)
 
     plot_mean_stdv('distrib', [mean[2000:10000], stdv[2000:10000]], \
             Title = 'Mean and Stdv along Temperal Dimension for Each Data Point')

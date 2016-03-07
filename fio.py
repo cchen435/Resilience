@@ -65,7 +65,7 @@ class DataBase():
         fh.close()
 
     # read a bp file
-	'''
+    '''
     def bpget(self, fname, variable):
         tmpfile = '/tmp/fault'
         tmpdatafile = '/tmp/faultdata'
@@ -100,17 +100,19 @@ class DataBase():
                             data =numpy.array(map(float, f.read().split()))
                         return data
         return None
-	'''
+    '''
 
-	def bpget(self, fname, variable):
-		tmpfile = '/tmp/fault'
-		ncfile = '.'.join([fname.split('.')[0], 'nc'])
-		cmd = ' '.join(['bp2ncd', fname, ncfile, '>', 'tmpfile'])
-		os.system(cmd);
-		data = ncget(ncfile, variable)
-		cmd = ' '.join(['rm', ncfile])
-		os.system(cmd)
-		return data
+    def bpget(self, fname, variable):
+        tmpfile = '/tmp/fault'
+        #tmpdatafile = '/tmp/data.nc'
+        #ncfile = '.'.join([fname.split('.')[0], 'nc'])
+        ncfile = '/tmp/nc' 
+        cmd = ' '.join(['bp2ncd', fname, ncfile, '>', 'tmpfile'])
+        os.system(cmd);
+        data = self.ncget(ncfile, variable)
+        cmd = ' '.join(['rm', ncfile])
+        os.system(cmd)
+        return data
 
     def bplist(self, fname):
         tmpfile = '/tmp/fault'
@@ -225,7 +227,7 @@ class DataBase():
         else:
             sys.exit('unknown file formate')
 
-	def get_files(self):
-		return self.files;
-	def reset(self):
-		self.curr = 0;
+    def get_files(self):
+        return self.files;R
+    def reset(self):
+        self.curr = 0;
