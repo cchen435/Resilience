@@ -66,18 +66,3 @@ def bpget(fname):
                     variables[name] = data
 
     return variables
-'''
-if __name__ == '__main__':
-    print 'nc:'
-    variables = ncget('h.fault.1.nc')
-
-    print variables.keys()
-    for v in variables:
-        print 'name:', v[0], 'size', v[1].size, 'shape', v[1].shape
-
-    print 'bp:'
-    var = bpget('MOMENTS.bp')
-    for v in var:
-        print 'name:', v[0], 'size', v[1].size
-    print var.keys()
-'''

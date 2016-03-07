@@ -21,8 +21,8 @@ import pdb
 
 '''
 read_file: read faults config from file, file contents should
-	follow some formats:
-	(entry), (step_name), (step_val), (mem), (point), (fault)
+    follow some formats:
+    (entry), (step_name), (step_val), (mem), (point), (fault)
 '''
 def read_file(filename):
 	faults = list()
@@ -46,12 +46,11 @@ def read_file(filename):
 		fault['mem'] = tmp[3].strip();
 		fault['point'] = tmp[4].strip();
 		fault['fault'] = tmp[5].strip();
-                faults.append(fault.copy());
-                fault.clear()
-                
-	handler.close()
+		faults.append(fault.copy());
+		fault.clear()
 
-        return faults
+	handler.close() 
+	return faults
 
 
 class Session():
@@ -239,9 +238,8 @@ class Session():
         while True:
             line = self.__readline()
             if len(line) == 0:
-                continue
-            #print line.rstrip('\n')
-            if line.startswith(token):
+				continue
+			elif line.find(token) >= 0:
                 line = line.lstrip(token)
                 return line
             elif line[0] in '+~=$@*^&':

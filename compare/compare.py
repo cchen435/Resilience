@@ -28,14 +28,12 @@ def main(argv):
 
     if dirs[0] != '0':
         sys.exit('directory for correct/normal data not found')
-
     normal_path = os.path.join(workspace, dirs[0])
     dirs.remove('0')
     if len(dirs) == 0:
         sys.exit('no faulty data found in working directory');
 
     files = [ f for f in os.listdir(normal_path) if os.path.isfile(os.path.join(normal_path, f))]
-
     if len(files) == 0:
         sys.exit('No data found for correct data');
     files.sort()
@@ -72,7 +70,6 @@ def main(argv):
             faulty = 0;
             normal_file = os.path.join(normal_path, f);
             faulty_file = os.path.join(path, f);
-
             if file_ext == 'bp':
                 ndata = bpget2(normal_file)
                 fdata = bpget2(faulty_file)
@@ -96,7 +93,7 @@ def main(argv):
                 fdata_array = fdata[var]
                 if ndata_array.size != fdata_array.size:
                     print 'faulty because of different array dimension (%d, %d) for \
-                                    file %s' % (ndata_array.size, fdata_array.size, f)
+                            file %s' % (ndata_array.size, fdata_array.size, f)
 
                 max_diff = 0.0
                 min_diff = 100000000.0
@@ -132,7 +129,6 @@ def main(argv):
                 else:
                     output_buf[var] = [res_tmp.copy()]
             timestep = timestep + 1
-
         fh = open(rfile, 'w')
         fmt = "%10s %10s %20s %20s %20s %20s\n"
         fh.write(fmt % (' ', 'timestep', 'total', 'min', 'max', 'mean'))

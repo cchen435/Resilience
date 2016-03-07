@@ -29,23 +29,22 @@ if __name__ == "__main__":
     args = vars(args)
     print (args['exec'], args['args'], args['restart'])
 
-    exec_file = [args['exec']]
+    exec_file = ['mpirun -np 32 -hostfile hostfile ' + args['exec']]
     exec_args = args['args']
     restart_args = args['restart']
 
     print(exec_file, exec_args, restart_args, exec_file + exec_args)
 
-    start_time = time.time()
-    status = sp.call(exec_file + exec_args)
+    print 'exec: ', ' '.join(exec_file+exec_args)
+
+    start = time.time()
+    status = sp.call([' '.join(exec_file + exec_args)], shell=True)
 
     while status == 23:
-        print "\n\nJob Resart ...... \n\n\n"
-        status = sp.call(exec_file + restart_args)
+        status = sp.call([' '.join(exec_file + restart_args)], shell=True)
 
-    print "status: ", status;
-
-    end_time = time.time();
-    print "\n\nJob finish time (execution duration): ", (end_time - start_time)
+    end = time.time()
+    print "Total execution time: ", (end - start)
 
 
 
