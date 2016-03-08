@@ -65,6 +65,9 @@ def main(argv):
             faulty = 0;
             ndata= normal_datasets.next()
             fdata= faulty_datasets.next()
+            print "ndata.size", ndata.size
+            print "fdata.size", fdata.size
+            
             if ndata.size != fdata.size:
                 print 'faulty because of different array dimension (%d, %d)' +\
                       'for file %s' % (ndata_array.size, fdata_array.size, f)

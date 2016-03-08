@@ -3,13 +3,15 @@
 import numpy
 
 # NetCDF for reading netcdf files
-from Scientific.IO import NetCDF as nf
+#from Scientific.IO import NetCDF as nf
+from scipy.io import netcdf as nf
 
 # pygrib for reading GRIB files 
 import pygrib
 
 import os
 import sys
+import pdb
 
 '''
 this file implements the I/O
@@ -39,9 +41,9 @@ class DataBase():
         self.variable = variable
         self.finished = False
 
-	
-	# return the totla timesteps under the workspace, assuming each file
-	# respresnets a time step.
+    
+    # return the totla timesteps under the workspace, assuming each file
+    # respresnets a time step.
     def get_timesteps(self):
         return self.timesteps
 
@@ -50,16 +52,20 @@ class DataBase():
 
     # read a netcdf file
     def ncget(self, fname, variable):
-        fh = nf.NetCDFFile(fname, 'r')
+        #fh = nf.NetCDFFile(fname, 'r')
+        fh = nf.netcdf_file(fname, 'r')
         for v in fh.variables:
             if v == variable:
                 data = fh.variables[v][:].ravel()
+                fh.close()
                 return data
         fh.close()
+        print 'warning: variable %s not found in dataset' % variable
         return None
 
     def nclist(self, fname):
-        fh = nf.NetCDFFile(fname, 'r')
+        #fh = nf.NetCDFFile(fname, 'r')
+        fh = nf.netcdf_file(fname, 'r')
         for v in fh.variables:
             print v
         fh.close()
@@ -103,6 +109,7 @@ class DataBase():
     '''
 
     def bpget(self, fname, variable):
+        #pdb.set_trace()
         tmpfile = '/tmp/fault'
         #tmpdatafile = '/tmp/data.nc'
         #ncfile = '.'.join([fname.split('.')[0], 'nc'])
@@ -163,7 +170,7 @@ class DataBase():
 
         fname = os.path.join(self.workspace, self.files[self.curr])
         self.curr += 1
-        
+
         tmp, file_extension = os.path.splitext(fname)
         if file_extension == '.grb':
             data = self.gribget(fname, self.variable)
