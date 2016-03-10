@@ -15,7 +15,7 @@ this script implement an injector using gdb
 if __name__ == "__main__":
     usage = "usage: %prog fault-file, exec, args for exec"
 
-    prefix = '/home/cchen/GTCP/data/'
+    prefix = '/tmp/cchen/GTCP/'
 
     parser = OptionParser(usage=usage)
 

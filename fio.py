@@ -8,7 +8,7 @@ from scipy.io import netcdf as nf
 
 # pygrib for reading GRIB files 
 import pygrib
-
+import adios
 import os
 import sys
 import pdb
@@ -53,7 +53,7 @@ class DataBase():
     # read a netcdf file
     def ncget(self, fname, variable):
         #fh = nf.NetCDFFile(fname, 'r')
-        fh = nf.netcdf_file(fname, 'r')
+        fh = nf.netcdf_file(fname, 'r', mmap=False)
         for v in fh.variables:
             if v == variable:
                 data = fh.variables[v][:].ravel()
@@ -109,16 +109,9 @@ class DataBase():
     '''
 
     def bpget(self, fname, variable):
-        #pdb.set_trace()
-        tmpfile = '/tmp/fault'
-        #tmpdatafile = '/tmp/data.nc'
-        #ncfile = '.'.join([fname.split('.')[0], 'nc'])
-        ncfile = '/tmp/nc' 
-        cmd = ' '.join(['bp2ncd', fname, ncfile, '>', 'tmpfile'])
-        os.system(cmd);
-        data = self.ncget(ncfile, variable)
-        cmd = ' '.join(['rm', ncfile])
-        os.system(cmd)
+        fh = adios.file(fname)
+        v = fh.var[variable]
+        data = v.read().ravel()
         return data
 
     def bplist(self, fname):

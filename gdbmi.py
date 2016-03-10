@@ -239,7 +239,7 @@ class Session():
             line = self.__readline()
             if len(line) == 0:
 				continue
-			elif line.find(token) >= 0:
+            elif line.find(token) >= 0:
                 line = line.lstrip(token)
                 return line
             elif line[0] in '+~=$@*^&':

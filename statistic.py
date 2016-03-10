@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 
 '''
 This module is for analysis climate data
@@ -9,7 +9,7 @@ Author: Chao Chen
 from optparse import OptionParser
 
 import matplotlib
-matplotlib.use('GTK')
+#matplotlib.use('GTK')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
@@ -109,29 +109,24 @@ def calc_statistic(ratio):
     
     # statistics alone with timestep, it calcs 
     # the statistic for each location
-    mean = numpy.zeros(size, dtype = ratio.dtype)
-    maxv = numpy.zeros(size, dtype = ratio.dtype)
-    minv = numpy.zeros(size, dtype = ratio.dtype)
-    stdv = numpy.zeros(size, dtype = ratio.dtype)
-    
     mean = numpy.mean(ratio, axis=0)
     maxv = numpy.max(ratio, axis=0)
     minv = numpy.min(ratio, axis=0)
     stdv = numpy.std(ratio, axis=0)
 
+    '''
     # statistics alone with array, it calcs
     # the statistic for each time step
-    tmean = numpy.zeros(steps, dtype = ratio.dtype)
-    tmaxv = numpy.zeros(steps, dtype = ratio.dtype)
-    tminv = numpy.zeros(steps, dtype = ratio.dtype)
-    tstdv = numpy.zeros(steps, dtype = ratio.dtype)
-
     tmean = numpy.mean(ratio, axis=1)
     tmaxv = numpy.max(ratio, axis=1)
     tminv = numpy.min(ratio, axis=1)
     tstdv = numpy.std(ratio, axis=1)
 
     return (maxv, minv, mean, stdv, tmaxv, tminv, tmean, tstdv)
+    '''
+    return (maxv, minv, mean, stdv)
+
+
 ## end of calc_statistic
 
 def to_percent(y, position):
@@ -201,11 +196,11 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
 
 def plot_mean_stdv(fname, data, \
                    Title = 'Mean and Stdv of Change Ratios for Each Location', \
-                   xlabel = None, ydown = -1.5, yup = 1.5):
+                   xlabel = None, mydown = None, myup = None, \
+                   sydown = None, syup = None):
     array = numpy.array(data)
     (tmp, size) = array.shape
     x = numpy.array(range(size))
-    #plt.ylim(-2, 1)
 
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
@@ -220,9 +215,11 @@ def plot_mean_stdv(fname, data, \
 
     plt.xlim(0, size)
     ax1.set_ylabel('Mean of Change Percentage', color='r')
-    ax1.set_ylim(ydown,yup)
+    if mydown is not None and myup is not None:
+        ax1.set_ylim(mydown,myup)
     ax2.set_ylabel('Stdv of Change Percentage', color='b')
-    ax2.set_ylim(ydown,yup)
+    if sydown is not None and syup is not None:
+        ax2.set_ylim(sydown,syup)
     ax1.legend(plots, labs)
     plt.title(Title)
     plt.savefig('.'.join([fname, 'pdf']))
@@ -248,7 +245,13 @@ if __name__ == '__main__':
 
     datasets = fio.DataBase(workspace, variable)
 
+    # storing the change ratio
     ratio_list = list()
+
+    # recording the mean value for each time step
+    tmean_list = list()
+    tstdv_list = list()
+
     while not datasets.done():
         print '\n\n Progress. Finished: %.02f%%' % (datasets.get_progress() * 100)
         (prev, curr) = datasets.get()
@@ -256,15 +259,24 @@ if __name__ == '__main__':
             print 'Finished'
             break
 
+        # calc and store the mean and stdv value for each time step
+        tmean_list.append(abs(curr).mean()/abs(prev).mean() - 1)
+        tstdv_list.append(numpy.array(tmean_list).std())
+
+        # calc and store the change ratio
+        tmp = abs(curr)/(abs(prev) + 1) - 1
+        ratio_list.append(tmp)
+        
         if size is not None and datasets.get_curr() == size:
             print 'Finished with up to expected timesteps'
             break
-        
-        tmp = abs(curr)/(abs(prev) + 1) - 1
-        ratio_list.append(tmp)
 
     ratio = numpy.array(ratio_list)
-    (maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
+    #(maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
+    (maxc, minc, mean, stdv) = calc_statistic(ratio)
+
+    tmean = numpy.array(tmean_list)
+    tstdv = numpy.array(tstdv_list)
 
     index = numpy.argmax(stdv)
     '''
@@ -280,25 +292,37 @@ if __name__ == '__main__':
     plot_lines('tmax', tmax, title='tmax')
     plot_lines('tmin', tmin, title='tmin')
     '''
+    plot_lines('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
     plot_hist('maxhist', ratio[:, index], title='Distribution of Change Ratio' \
               + 'at the location with max stdv')
     plot_hist('overalhist', ratio, title='Distribution of Change Ration for Whole Data Set')
 
     locations = list()
-    locations.append(ratio[:, 63]);
+    
+    locations.append(ratio[:, 1]);
     locations.append(ratio[:, 1014]);
-    locations.append(ratio[:, 3214]);
-    locations.append(ratio[:, 5897]);
+    locations.append(ratio[:, 64]);
+    locations.append(ratio[:, 138]);
     locations.append(ratio[:, 8112]);
     
     plot_lines('location', locations, \
             title="Relative Changes in Data Values for Randomly" + \
                   "Selected Data Points", \
             ydown = -1.0, yup=0.0)
-
-    plot_mean_stdv('distrib', [mean[2000:10000], stdv[2000:10000]], \
-            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point')
-    
+    '''
+    plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
+            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point', \
+            mydown = -1.3, myup = -0.3, sydown= -0.1, syup = 0.1)
+    '''
+    plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
+            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point') 
+    ''' 
     plot_mean_stdv('average', [tmean, tstdv], \
             Title='Mean and Stdv of Relative Changes for Each Time Step', \
-            xlabel='Time Step')
+            xlabel='Time Step', mydown = -0.8, myup = -0.5, \
+            sydown = 0.3, syup = 0.5)
+    '''
+
+    plot_mean_stdv('average', [tmean, tstdv], \
+            Title='Mean and Stdv of Relative Changes for Each Time Step', \
+            xlabel='Time Step') 
