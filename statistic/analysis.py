@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 '''
 This module is for analysis climate data
 in format of grib
@@ -10,6 +11,7 @@ from optparse import OptionParser
 import matplotlib
 matplotlib.use('GTK')
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 import math
 import sys
@@ -17,6 +19,8 @@ import numpy
 import os
 
 import fio
+
+#import pdb
 
 #control arguments
 #numpy.set_printoptions(precision=6)
@@ -130,7 +134,15 @@ def calc_statistic(ratio):
     return (maxv, minv, mean, stdv, tmaxv, tminv, tmean, tstdv)
 ## end of calc_statistic
 
+def to_percent(y, position):
+    s = str(100 * y)
+    if matplotlib.rcParams['text.usetex'] is True:
+        return s+r'$\%$'
+    else:
+        return s+'%'
+
 def plot_hist(name, data, title = 'Distribution of Change Ratio'):
+    #pdb.set_trace()
     array = numpy.array(data)
     size = array.size
     
@@ -138,46 +150,81 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     hist, bins = numpy.histogram(array, bins=binsize)
     center = (bins[:-1]+bins[1:])/2
     width =  0.7 * (bins[1]-bins[0])
+    hist = hist * 1.0 /size
 
     plt.bar(center, hist, align='center', width = width)
+    formatter=FuncFormatter(to_percent)
+    plt.gca().yaxis.set_major_formatter(formatter)
     plt.title(title)
+    plt.ylabel('Count in Percentage')
+    plt.xlabel('Change Percentage')
     plt.savefig('.'.join([name, 'pdf']))
     plt.clf()
 
-def plot_lines(fname, data, Title = 'Change ratio', yup = None, ydown = None):
+def plot_lines(fname, data, title = 'Change ratio', yup = None,\
+               ydown = None, xlabel = None):
     array = numpy.array(data)
-    style=['ro-', 'b*-', 'gs-', 'kD-', 'mX-'];
-    plots = list();
-    (items, size) = array.shape
-    x = range(size)
+    style=['ro-', 'b*-', 'gs-', 'kD-', 'mx-'];
+    if array.ndim == 1:
+        items = 1
+        size = array.size
+    else:
+        (items, size) = array.shape
+
+    x = numpy.array(range(size))
     plt.ticklabel_format(useOffset=False, style='plain')
+    plt.xlim(0, size)
+    
     if yup is not None and ydown is not None:
         plt.ylim(ydown, yup)
     
-    for i in range(items):
-	plot = plt.plot(x, array[i])
-    	plots.append(plot)
+    print 'dim: ', array.ndim
+    if array.ndim > 1:
+        for i in range(items):
+            plot = plt.plot(x, array[i], style[i], label='Location %d'%i)
+    else:
+        print 'name', fname
+        plot = plt.plot(x, array, style[0])
 
-    labels = ["Location %d"%x for x in range(items)]
-    plt.legend(tuple(plots), tuple(labels), 'best', numpoints=1)
+    if array.ndim > 1:
+        plt.legend(loc=4)
+
+    plt.xlabel('Time Step')
+    if xlabel is not None:
+        plt.xlabel(xlabel)
+    plt.ylabel('Change Percentage')
+    plt.title(title)
+    
     plt.savefig('.'.join([fname, 'pdf']))
     plt.clf()
 
-def plot_mean_stdv(fname, data, Title = 'Mean and Stdv of Change Ratios for Each Location'):
+
+def plot_mean_stdv(fname, data, \
+                   Title = 'Mean and Stdv of Change Ratios for Each Location', \
+                   xlabel = None):
     array = numpy.array(data)
-    x = range(size)
-    plt.ylim(-2, 1)
+    (tmp, size) = array.shape
+    x = numpy.array(range(size))
+    #plt.ylim(-2, 1)
 
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
-    plot1 = ax1.plot(x, array[0], 'ro-')
-    plot2 = ax2.plot(x, array[1], 'b*-')
+    plot1 = ax1.plot(x, array[0], 'r-', label='Mean')
+    plot2 = ax2.plot(x, array[1], 'b--', label='Stdv')
+    plots=plot1+plot2
+    labs=[l.get_label() for l in plots]
 
-    ax1.set_xlabel('Data Points');
-    ax1.set_ylabel('Mean', color='r')
-    ax2.set_ylabel('Stdv', color='b')
-    
-    plt.legend((plot1, plot2), ('mean', 'stdv'), 'best', numpoints=1)
+    ax1.set_xlabel('Data Point ID');
+    if xlabel is not None:
+        ax1.set_xlabel(xlabel)
+
+    plt.xlim(0, size)
+    ax1.set_ylabel('Mean of Change Percentage', color='r')
+    ax1.set_ylim(-0.5,0.5)
+    ax2.set_ylabel('Stdv of Change Percentage', color='b')
+    ax2.set_ylim(-0.5,0.5)
+    ax1.legend(plots, labs)
+    plt.title(Title)
     plt.savefig('.'.join([fname, 'pdf']))
     plt.clf()
 
@@ -219,37 +266,39 @@ if __name__ == '__main__':
     ratio = numpy.array(ratio_list)
     (maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
 
-    '''
     index = numpy.argmax(stdv)
-
+    '''
     plot_hist('mean', mean, title='Mean Change Ratio')
     plot_hist('max', maxc, title='Max Change Ratio')
     plot_hist('min', minc, title='Min Change Ratio')
     plot_hist('stdv', stdv, title='standard diviation')
     plot_hist('hist', ratio[:, index], title='Change Ratio at Loc with max stdv')
-    plot_line('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
-    plot_line('tmean', tmean, title='tmean')
-    plot_line('tstdv', tstdv, title='tstdv')
-    plot_line('tmax', tmax, title='tmax')
-    plot_line('tmin', tmin, title='tmin')
+    plot_lines('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
+
+    plot_lines('tmean', tmean, title='tmean')
+    plot_lines('tstdv', tstdv, title='tstdv')
+    plot_lines('tmax', tmax, title='tmax')
+    plot_lines('tmin', tmin, title='tmin')
     '''
+    plot_hist('maxhist', ratio[:, index], title='Distribution of Change Ratio' \
+              + 'at the location with max stdv')
+    plot_hist('overalhist', ratio, title='Distribution of Change Ration for Whole Data Set')
 
-    for key in mean.keys():
-        locations = list();
-	plot_hist('mean', mean[key], title='Mean Change Ratio')
-        plot_hist('max', maxc[key], title='Max Change Ratio')
-        plot_hist('min', minc[key], title='Min Change Ratio')
-        plot_hist('stdv', stdv[key], title='standard diviation')
-        print 'max stdv:', numpy.array(stdv[key]).max()
-        print 'min stdv:', numpy.array(stdv[key]).min()
-   
-	plot_mean_stdv('distribution', [mean, stdv]) 
-	
-        locations.append(ratio[key][:, 63]);
-	locations.append(ratio[key][:, 126]);
-	locations.append(ratio[key][:, 253]);
-	locations.append(ratio[key][:, 1014]);
-	locations.append(ratio[key][:, 8112]);
+    locations = list()
+    locations.append(ratio[:, 63]);
+    locations.append(ratio[:, 1014]);
+    locations.append(ratio[:, 3214]);
+    locations.append(ratio[:, 5897]);
+    locations.append(ratio[:, 8112]);
+    
+    plot_lines('location', locations, \
+            title="Relative Changes in Data Values for Randomly" + \
+                  "Selected Data Points", \
+            ydown = -0.5, yup=0.5)
 
-        plot_lines('location', locations, "Relative Changes in Data Values for Randomly Selected Data Points") 
-        
+    plot_mean_stdv('distrib', [mean[2000:10000], stdv[2000:10000]], \
+            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point')
+    
+    plot_mean_stdv('average', [tmean, tstdv], \
+            Title='Mean and Stdv of Relative Changes for Each Time Step', \
+            xlabel='Time Step')

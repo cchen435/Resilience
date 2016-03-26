@@ -28,7 +28,8 @@ class DataBase():
 
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
         files.sort()
-
+        print files
+        raw_input("check file order")
         self.workspace = path
         if len(files) == 0:
             sys.exit('no file found in %s, please examine the setup' % path)
