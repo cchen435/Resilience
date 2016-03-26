@@ -12,33 +12,64 @@ import adios
 import os
 import sys
 import pdb
+import re
+
+
+def tryint(s):
+    try:
+        return int(s)
+    except:
+        return s
+
+def alphanum_key(s):
+    '''
+    turn "z23a" --> ['z', 23, 'a']
+    '''
+    return [tryint(c) for c in re.split('([0-9]+)', s)]
+
+def sort_nicely(l):
+    l.sort(key=alphanum_key)
 
 '''
-this file implements the I/O
-operations to read data from 
-netCDF, grib and bp files
-return variable is a dictionary 
-with variable names as keys, and
-variable contents as values. 
+this file implements basic data abstraction
+called database for datasets, each data set
+contains multiple timesteps with each file 
+represents a time step. the abstracted I/O operation
+is to read a variable based on timestep, 
 '''
 
+''' a data base represents a set of data set '''
 class DataBase():
-    def __init__(self, workspace, variable):
+    def __init__(self, workspace):
         path = os.path.abspath(workspace)
         if os.path.exists(path) == False:
             sys.exit('workspace (%s) not exist'%path)
+        
 
+        ''' files in the data set, expect each file represents a timestep '''
         files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-        files.sort()
+        sort_nicely(files)
 
-        self.workspace = path
+        
+        ''' empty directory '''
         if len(files) == 0:
             sys.exit('no file found in %s, please examine the setup' % path)
 
+
+        ''' class global variables '''
+        
+        # path to files, used for reading
+        self.workspace = path
+        # data sets in terms of files 
         self.files = files
+        # simulating current steps, 
         self.curr = 0;
+        
         self.timesteps = len(files)
-        self.variable = variable
+        
+        # variables in the data set
+        self.variables = self.__get_variables()
+        
         self.finished = False
 
     
@@ -47,93 +78,58 @@ class DataBase():
     def get_timesteps(self):
         return self.timesteps
 
-    def done(self):
+    def is_done(self):
         return self.finished
 
-    # read a netcdf file
-    def ncget(self, fname, variable):
-        #fh = nf.NetCDFFile(fname, 'r')
-        fh = nf.netcdf_file(fname, 'r', mmap=False)
-        for v in fh.variables:
-            if v == variable:
-                data = fh.variables[v][:].ravel()
-                fh.close()
-                return data
-        fh.close()
-        print 'warning: variable %s not found in dataset' % variable
-        return None
+    # read a variable from a NetCDF file 
+    def __nc_read(self, fname, variable):
+        try:
+            fh = nf.netcdf_file(fname, 'r', mmap=False)
+        except:
+            sys,exit('error when reading var %s from file %s' %(variable, fname))
+        if v not in fh.variables:
+            print 'warning: variable %s not found in dataset' % variable
+            fh.close()
+            return None
+        else:
+            data = fh.variables[v][:].ravel()
+            fh.close()
+            return data
 
-    def nclist(self, fname):
-        #fh = nf.NetCDFFile(fname, 'r')
+    # get all variables from a NetCDF file
+    def __nc_variables(self, fname):
+        name = list();
         fh = nf.netcdf_file(fname, 'r')
         for v in fh.variables:
-            print v
+            name.append(v)
+
         fh.close()
+        return name
 
     # read a bp file
-    '''
-    def bpget(self, fname, variable):
-        tmpfile = '/tmp/fault'
-        tmpdatafile = '/tmp/faultdata'
 
-        # using 'bpls' command to get the vairalbe lists
-        cmd = 'bpls ' + fname +  ' > ' + tmpfile
-        os.system(cmd)
+    # read a variable data from BP file
+    def __bp_read(self, fname, variable):
+        try:
+            fh = adios.file(fname)
+            v = fh.var[variable]
+            data = v.read().ravel()
+            return data
+            fh.close()
+        except:
+            print "error happend: var=%s file%s" % (variable, fname)
 
-        # analyze each line of 'bpls output'
-        # and only focuse on double type array data
-        with open(tmpfile, 'r') as fh:
-            for line in fh:
-                line = line.strip()
-                if line.startswith('double'):
-                    line = line.replace('{', '')
-                    line = line.replace('}', '')
-                    line = line.replace(',', '')
-                    line = line.split()
-
-                    # get the variable name and dimention info
-                    name = line[1]
-                    dim = (int(line[2]), int(line[3]), int(line[4]))
-                    #print line, name, dim
-
-                    # extract the related data for the variable using 'bp2ascii'
-                    # utility
-                    if name == variable:
-                        cmd = (' ').join(['bp2ascii -v', name, fname, tmpdatafile, '> /tmp/tmpfile'])
-                        os.system(cmd)
-
-                        with open(tmpdatafile, 'r') as f:
-                            data =numpy.array(map(float, f.read().split()))
-                        return data
-        return None
-    '''
-
-    def bpget(self, fname, variable):
+    def __bp_variables(self, fname):
+        name = list()
         fh = adios.file(fname)
-        v = fh.var[variable]
-        data = v.read().ravel()
-        return data
+        for v in fh.var:
+            name.append(v)
+        fh.close()
+        return name
 
-    def bplist(self, fname):
-        tmpfile = '/tmp/fault'
-        cmd = 'bpls ' + fname +  ' > ' + tmpfile
-        os.system(cmd)
-        with open(tmpfile, 'r') as fh:
-            for line in fh:
-                line = line.strip()
-                if line.startswith('double'):
-                    line = line.replace('{', '')
-                    line = line.replace('}', '')
-                    line = line.replace(',', '')
-                    line = line.split()
 
-                    # get the variable name and dimention info
-                    name = line[1]
-                    dim = (int(line[2]), int(line[3]), int(line[4]))
-                    print name
-
-    # read a grib file
-    def gribget(self, fname, variable):
+    # read an variable from a grib file
+    def __grib_read(self, fname, variable):
         gribs = pygrib.open(fname)
         tmp = gribs.select(name = variable)
         gribs.close()
@@ -145,89 +141,77 @@ class DataBase():
             return None
         return numpy.array(data).ravel()
 
-    def griblist(self, fname):
+    def __grib_variables(self, fname):
         gribs = pygrib.open(fname)
         name = list()
         for grb in gribs:
             name.append(grb.name)
         gribs.close()
 
-        for item in set(name):
-            print item
+        name.sort()
+        return list(set(name))
 
     # general interface
-    def next(self):
+    def read(self, variable, steps = 1):
         if self.curr == self.timesteps:
             self.finished = True
             return None
 
-        fname = os.path.join(self.workspace, self.files[self.curr])
-        self.curr += 1
-
-        tmp, file_extension = os.path.splitext(fname)
-        if file_extension == '.grb':
-            data = self.gribget(fname, self.variable)
-        elif file_extension == '.nc':
-            data = self.ncget(fname, self.variable)
-        elif file_extension == '.bp':
-            data = self.bpget(fname, self.variable)
-        else:
-            sys.exit('unknown file formate (%s)' % fname)
+        if variable not in self.variables:
+            sys.exit("the variable %s not in data set" % variable)
         
-        if self.curr == self.timesteps:
+        data = list();
+
+        for i in range(steps):
+            if self.curr + i == self.timesteps:
+                self.finished = True;
+                break
+
+            fname = os.path.join(self.workspace, self.files[self.curr+i])
+            name, ext = os.path.splitext(fname) 
+            if ext == '.grb':
+                data.append(self.__grib_read(fname, variable))
+            elif ext == '.nc':
+                data.append(self.__nc_read(fname, variable))
+            elif ext == '.bp':
+                data.append(self.__bp_read(fname, variable))
+            else:
+                sys.exit('unknown file formate (%s) for (%s)' % (ext, fname))
+            
+        self.curr += 1
+        if self.curr+steps > self.timesteps:
             self.finished = True
 
         return data
 
-    def get(self):
-        if self.curr == self.timesteps - 1:
-            self.finished = True
-            return (None, None)
-
-        f1 = os.path.join(self.workspace, self.files[self.curr])
-        f2 = os.path.join(self.workspace, self.files[self.curr+1])
-        
-        #print f1
-        #print f2
-
-        self.curr += 1
-        tmp, file_extension = os.path.splitext(f1)
-        if file_extension == '.grb':
-            prev = self.gribget(f1, self.variable)
-            curr = self.gribget(f2, self.variable)
-        elif file_extension == '.nc':
-            prev = self.ncget(f1, self.variable)
-            curr = self.ncget(f2, self.variable)
-        elif file_extension == '.bp':
-            prev = self.bpget(f1, self.variable)
-            curr = self.bpget(f2, self.variable)
-        else:
-            sys.exit('unknown file formate (%s %s)' % (tmp, file_extension))
-        
-        if self.curr == self.timesteps - 1:
-            self.finished = True
-
-        return (prev, curr)
-
-    def get_progress(self):
+    
+    # print progress infomation
+    def progress(self):
         return float(self.curr)/(self.timesteps)
 
-    def get_curr(self):
+    # print current timestep
+    def timestep(self):
         return self.curr
 
-    def list_variables(self):
+    def __get_variables(self):
         fname = os.path.join(self.workspace, self.files[0])
-        tmp, extension = os.path.splitext(fname)
-        if extension == '.grb':
-            self.griblist(fname)
-        elif extension == '.nc':
-            self.nclist(fname)
-        elif extension == '.bp':
-            self.bplist(fname)
+        name, ext = os.path.splitext(fname)
+        if ext == '.grb':
+            return self.__grib_variables(fname)
+        elif ext == '.nc':
+            return self.__nc_variables(fname)
+        elif ext == '.bp':
+            return self.__bp_variables(fname)
         else:
             sys.exit('unknown file formate')
 
     def get_files(self):
-        return self.files;R
+        return self.files
+    
+    # return varibles in the file 
+    def get_variables(self):
+        return self.variables
+
     def reset(self):
         self.curr = 0;
+        self.finished = False

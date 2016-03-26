@@ -23,6 +23,11 @@ import pdb
 read_file: read faults config from file, file contents should
     follow some formats:
     (entry), (step_name), (step_val), (mem), (point), (fault)
+    entry: the entry for the main program, e.g. main for c
+    step_name: step variable
+    mem: location where the fault will be injected
+    point:
+    fault: the fault
 '''
 def read_file(filename):
 	faults = list()

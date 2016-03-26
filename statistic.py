@@ -28,75 +28,6 @@ numpy.set_printoptions(suppress=True)
 
 DEBUG=0
 
-
-'''
-calculate the change ratio between two successive
-time steps for variable "variable" at the level "level"
-'''
-def calc_change_ratio(files):
-    if DEBUG:
-        print("working on files:");
-        print(files)
-
-    ratio = dict()
-
-    # get number of files
-    size = len(files)
-    
-    ''' just do first half of files now '''
-    size /= 3 
-
-    i = 1;
-    while i < size:
-        
-        if i % 10 == 0:
-            print '### log: finished', float(i)/size
-
-        prev = files[i-1]
-        curr = files[i]
-
-        if DEBUG:
-            print("doing calculation on file: prev-->" + prev + " , curr-->" + curr);
-
-        # open grib file
-        curr_fp = getdata(curr)
-        prev_fp = getdata(prev)
-        if i == 1:
-            keys = curr_fp.keys()
-        
-        i+=1
-
-
-        for key in keys:
-            if curr_fp.has_key(key) == False:
-                sys.exit('variable %s not found in %s' % ( key, curr) )
-            if prev_fp.has_key(key) == False:
-                sys.exit('variable %s not found in %s' % ( key, prev) )
-
-            curr_values = abs(curr_fp[key])
-            prev_values = abs(prev_fp[key])
-
-            #prev_values[prev_values == 0] = 1
-            prev_values += 1
-            diff = curr_values/prev_values - 1
-
-            if ratio.has_key(key) == False:
-                ratio[key] = [diff]
-            else:
-                ratio[key].append(diff)
-            
-            # recall memory
-            del curr_values, prev_values, diff
-            gc.collect()
-
-    print '### log: finished', float(i)/size
-    for key in ratio.keys():
-        ratio[key] = numpy.array(ratio[key]);
-        gc.collect()
-    return ratio
-
-## end of calc_change_ratio
-
 '''
 get the parameters and levels for each parameters in the file
 '''
@@ -153,13 +84,15 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.title(title)
     plt.ylabel('Count in Percentage')
     plt.xlabel('Change Percentage')
-    plt.savefig('.'.join([name, 'pdf']))
+    plt.savefig('.'.join([name, 'pdf']), bbox_inches='tight')
     plt.clf()
 
 def plot_lines(fname, data, title = 'Change ratio', yup = None,\
                ydown = None, xlabel = None):
     array = numpy.array(data)
-    style=['ro-', 'b*-', 'gs-', 'kD-', 'mx-'];
+    array = array * 100
+    #style=['ro-', 'b*-', 'gs-', 'kD-', 'mx-'];
+    style=['r', 'b', 'k', 'g', 'm'];
     if array.ndim == 1:
         items = 1
         size = array.size
@@ -176,7 +109,7 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     print 'dim: ', array.ndim
     if array.ndim > 1:
         for i in range(items):
-            plot = plt.plot(x, array[i], style[i], label='Location %d'%i)
+            plot = plt.plot(x, array[i], style[i], label='Data Point %d'%i)
     else:
         print 'name', fname
         plot = plt.plot(x, array, style[0])
@@ -187,10 +120,10 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     plt.xlabel('Time Step')
     if xlabel is not None:
         plt.xlabel(xlabel)
-    plt.ylabel('Change Percentage')
+    plt.ylabel('Change Percentage (%)')
     plt.title(title)
     
-    plt.savefig('.'.join([fname, 'pdf']))
+    plt.savefig('.'.join([fname, 'pdf']), bbox_inches='tight')
     plt.clf()
 
 
@@ -204,6 +137,7 @@ def plot_mean_stdv(fname, data, \
 
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
+    array[0] = array[0] * 100
     plot1 = ax1.plot(x, array[0], 'r-', label='Mean')
     plot2 = ax2.plot(x, array[1], 'b--', label='Stdv')
     plots=plot1+plot2
@@ -214,7 +148,7 @@ def plot_mean_stdv(fname, data, \
         ax1.set_xlabel(xlabel)
 
     plt.xlim(0, size)
-    ax1.set_ylabel('Mean of Change Percentage', color='r')
+    ax1.set_ylabel('Mean of Change Percentage (%)', color='r')
     if mydown is not None and myup is not None:
         ax1.set_ylim(mydown,myup)
     ax2.set_ylabel('Stdv of Change Percentage', color='b')
@@ -222,7 +156,7 @@ def plot_mean_stdv(fname, data, \
         ax2.set_ylim(sydown,syup)
     ax1.legend(plots, labs)
     plt.title(Title)
-    plt.savefig('.'.join([fname, 'pdf']))
+    plt.savefig('.'.join([fname, 'pdf']), bbox_inches='tight')
     plt.clf()
 
 
@@ -243,7 +177,7 @@ if __name__ == '__main__':
     else:
         size = None
 
-    datasets = fio.DataBase(workspace, variable)
+    datasets = fio.DataBase(workspace)
 
     # storing the change ratio
     ratio_list = list()
@@ -252,22 +186,25 @@ if __name__ == '__main__':
     tmean_list = list()
     tstdv_list = list()
 
-    while not datasets.done():
-        print '\n\n Progress. Finished: %.02f%%' % (datasets.get_progress() * 100)
-        (prev, curr) = datasets.get()
+    while not datasets.is_done():
+        print '\n\n Progress. Finished: %.02f%%' % (datasets.progress() * 100)
+        [prev, curr] = datasets.read(variable, 2)
         if prev is None or curr is None:
             print 'Finished'
             break
 
         # calc and store the mean and stdv value for each time step
-        tmean_list.append(abs(curr).mean()/abs(prev).mean() - 1)
+        tmean_list.append(curr.mean()/prev.mean() - 1)
+        #tmean_list.append(abs(curr).mean()/abs(prev).mean() - 1)
         tstdv_list.append(numpy.array(tmean_list).std())
 
         # calc and store the change ratio
-        tmp = abs(curr)/(abs(prev) + 1) - 1
+        #tmp = abs(curr)/(abs(prev) + 1) - 1
+        tmp = (curr - prev)/(prev + 1)
+        #tmp = (abs(curr) - abs(prev))/(abs(prev) + 1)
         ratio_list.append(tmp)
         
-        if size is not None and datasets.get_curr() == size:
+        if size is not None and datasets.get_timestep() == size:
             print 'Finished with up to expected timesteps'
             break
 
@@ -292,30 +229,35 @@ if __name__ == '__main__':
     plot_lines('tmax', tmax, title='tmax')
     plot_lines('tmin', tmin, title='tmin')
     '''
-    plot_lines('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
+    plot_lines('line', ratio[:, index], title='Change Ratio at Loc (%d) with max stdv' % index)
     plot_hist('maxhist', ratio[:, index], title='Distribution of Change Ratio' \
-              + 'at the location with max stdv')
+              + ' at the location with max stdv')
     plot_hist('overalhist', ratio, title='Distribution of Change Ration for Whole Data Set')
 
     locations = list()
     
     locations.append(ratio[:, 1]);
-    locations.append(ratio[:, 1014]);
-    locations.append(ratio[:, 64]);
+    #locations.append(ratio[:, 1014]);
+    #locations.append(ratio[:, 64]);
     locations.append(ratio[:, 138]);
-    locations.append(ratio[:, 8112]);
+    locations.append(ratio[:, 8132]);
     
     plot_lines('location', locations, \
-            title="Relative Changes in Data Values for Randomly" + \
-                  "Selected Data Points", \
-            ydown = -1.0, yup=0.0)
+            title="Changes Percentages for Randomly " + \
+                  "Selected Data Points")
     '''
     plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
             Title = 'Mean and Stdv along Temperal Dimension for Each Data Point', \
             mydown = -1.3, myup = -0.3, sydown= -0.1, syup = 0.1)
     '''
-    plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
-            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point') 
+    plot_mean_stdv('distrib', [mean, stdv], \
+            Title = 'Mean and Stdv along Temperal Dimension'+\
+            ' for Each Data Point')
+    '''
+    \
+            mydown = -1.3, myup = -0.5, sydown = -0.01, syup = 0.01);
+    '''
+
     ''' 
     plot_mean_stdv('average', [tmean, tstdv], \
             Title='Mean and Stdv of Relative Changes for Each Time Step', \
@@ -325,4 +267,8 @@ if __name__ == '__main__':
 
     plot_mean_stdv('average', [tmean, tstdv], \
             Title='Mean and Stdv of Relative Changes for Each Time Step', \
-            xlabel='Time Step') 
+            xlabel='Time Step')
+    '''
+    mydown=0.01, myup = 0.01, \
+            sydown=0.0, syup = 0.01) 
+    '''
