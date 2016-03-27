@@ -82,7 +82,7 @@ class DataBase():
         return self.finished
 
     # read a variable from a NetCDF file 
-    def __nc_read(self, fname, variable):
+    def __nc_read(self, fname, v):
         try:
             fh = nf.netcdf_file(fname, 'r', mmap=False)
         except:

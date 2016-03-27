@@ -17,6 +17,7 @@ import math
 import sys
 import numpy
 import os
+import time
 
 import fio
 
@@ -88,9 +89,8 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.clf()
 
 def plot_lines(fname, data, title = 'Change ratio', yup = None,\
-               ydown = None, xlabel = None):
+               ydown = None, xlabel = None, ylabel = None):
     array = numpy.array(data)
-    array = array * 100
     #style=['ro-', 'b*-', 'gs-', 'kD-', 'mx-'];
     style=['r', 'b', 'k', 'g', 'm'];
     if array.ndim == 1:
@@ -99,6 +99,7 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     else:
         (items, size) = array.shape
 
+    print 'items, size :', items, size
     x = numpy.array(range(size))
     plt.ticklabel_format(useOffset=False, style='plain')
     plt.xlim(0, size)
@@ -121,6 +122,8 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     if xlabel is not None:
         plt.xlabel(xlabel)
     plt.ylabel('Change Percentage (%)')
+    if ylabel is not None:
+        plt.ylabel(ylabel)
     plt.title(title)
     
     plt.savefig('.'.join([fname, 'pdf']), bbox_inches='tight')
@@ -188,6 +191,7 @@ if __name__ == '__main__':
 
     while not datasets.is_done():
         print '\n\n Progress. Finished: %.02f%%' % (datasets.progress() * 100)
+        time.sleep(1)
         [prev, curr] = datasets.read(variable, 2)
         if prev is None or curr is None:
             print 'Finished'
@@ -215,36 +219,22 @@ if __name__ == '__main__':
     tmean = numpy.array(tmean_list)
     tstdv = numpy.array(tstdv_list)
 
-    index = numpy.argmax(stdv)
-    '''
-    plot_hist('mean', mean, title='Mean Change Ratio')
-    plot_hist('max', maxc, title='Max Change Ratio')
-    plot_hist('min', minc, title='Min Change Ratio')
-    plot_hist('stdv', stdv, title='standard diviation')
-    plot_hist('hist', ratio[:, index], title='Change Ratio at Loc with max stdv')
-    plot_lines('line', ratio[:, index], title='Change Ratio at Loc with max stdv')
-
-    plot_lines('tmean', tmean, title='tmean')
-    plot_lines('tstdv', tstdv, title='tstdv')
-    plot_lines('tmax', tmax, title='tmax')
-    plot_lines('tmin', tmin, title='tmin')
-    '''
-    plot_lines('line', ratio[:, index], title='Change Ratio at Loc (%d) with max stdv' % index)
-    plot_hist('maxhist', ratio[:, index], title='Distribution of Change Ratio' \
+    indexes = stdv.argsort()
+    
+    plot_lines('line', ratio[:, indexes[-1]], title='Change Ratio at Loc (%d)' % indexes[-1])
+    plot_hist('maxhist', ratio[:, indexes[-1]], title='Distribution of Change Ratio' \
               + ' at the location with max stdv')
     plot_hist('overalhist', ratio, title='Distribution of Change Ration for Whole Data Set')
 
-    locations = list()
-    
-    locations.append(ratio[:, 1]);
-    #locations.append(ratio[:, 1014]);
-    #locations.append(ratio[:, 64]);
-    locations.append(ratio[:, 138]);
-    locations.append(ratio[:, 8132]);
-    
-    plot_lines('location', locations, \
-            title="Changes Percentages for Randomly " + \
-                  "Selected Data Points")
+    locations = [indexes[stdv.size/4], indexes[stdv.size/2-20], indexes[stdv.size/2]]
+    print 'locations:', locations
+    points = ratio[:, locations].transpose() * 100
+
+    print "points shape", points.shape
+
+    plot_lines('location', points, \
+            title="Changes Ratios of Data Points along Temporal Dimension" \
+            , ydown=-0.01, yup = 0.01)
     '''
     plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
             Title = 'Mean and Stdv along Temperal Dimension for Each Data Point', \
@@ -268,6 +258,11 @@ if __name__ == '__main__':
     plot_mean_stdv('average', [tmean, tstdv], \
             Title='Mean and Stdv of Relative Changes for Each Time Step', \
             xlabel='Time Step')
+    
+    plot_lines('stdv', stdv, \
+            title="Standard Variation of each Data Point" \
+            , ydown = 0, yup = 0.004, ylabel='Standard Variation'\
+            , xlabel='Data Points')
     '''
     mydown=0.01, myup = 0.01, \
             sydown=0.0, syup = 0.01) 
