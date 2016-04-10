@@ -146,7 +146,7 @@ def main(argv):
     for var in var1:
         data1 = read(file1, var)
         data2 = read(file2, var)
-        diff = (abs(data2)-abs(data1))/(abs(data1) + 1)
+        diff = (data2-data1)/(abs(data1) + 0.2)
         diff *= 100.0
         plt.plot(diff, 'b')
         plt.xlim([0, diff.size])

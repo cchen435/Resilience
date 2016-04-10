@@ -15,8 +15,18 @@ import sys
 import subprocess as sp
 import fcntl
 import re
-
+import struct
+import random
 import pdb
+
+
+def floatToBits(f):
+    s = struct.pack('>f', f)
+    return struct.unpack('>L', s)[0]
+
+def bitsToFloat(b):
+    s = struct.pack('>L', b)
+    return struct.unpack('>f', s)[0]
 
 
 '''
@@ -159,6 +169,15 @@ class Session():
         print 'DEBUG (watch_insert): %s' % cmd
         result = self.__send(cmd)
 
+    # delete breakpoint, if id is set, just delete one
+    # otherwise delete all
+    def break_delete(self, id=None):
+        if id is None:
+            cmd = '-break-delete'
+        else:
+            cmd = '%s %s' % ('-break-delete', id)
+        result = self.__send(cmd)
+
 
     # set the value to a varilabe
     def __set(self, var, val='0'):
@@ -201,10 +220,16 @@ class Session():
         old_val = float(self.get(var))
         print '%15s: %4.6f' % ('old value', old_val)
 
-        if fault_ratio > 1 or old_val == 0 :
-            new_val = str(fault_ratio)
+        if abs(old_val) < 0.0000000000001 :
+            bit = random.randint(23,31)
+            tmp = floatToBits(fault_ratio)
+            tmp = tmp ^ (1 << bit)
+            print 'bit flip, tmp=:', tmp
+
+            new_val = bitsToFloat(tmp)
         else:
-            new_val = str(old_val * (1 + fault_ratio))
+            new_val = str(old_val * fault_ratio)
+        print '%15s: %4.6f' % ('new value', float(new_val))
         self.__set(var, new_val)
 
         new_val = float(self.get(var))
@@ -254,7 +279,8 @@ class Session():
 
 
     def finish(self):
-        while self.stop_reason != 'exited-normally':
+        while self.stop_reason != 'exited-normally' \
+                and self.stop_reason != 'signal-received':
             status = self.wait_for('*stopped,')
             reason = status.split(',')[0].lstrip('reason=')
             reason = reason.strip('\"')

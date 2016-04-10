@@ -38,15 +38,14 @@ get the parameters and levels for each parameters in the file
 def calc_statistic(ratio):
 
     (steps, size) = ratio.shape
-    
+
     # statistics alone with timestep, it calcs 
     # the statistic for each location
-    mean = numpy.mean(ratio, axis=0)
-    maxv = numpy.max(ratio, axis=0)
-    minv = numpy.min(ratio, axis=0)
-    stdv = numpy.std(ratio, axis=0)
+    gmean = numpy.mean(ratio, axis=0)
+    gmaxv = numpy.max(ratio, axis=0)
+    gminv = numpy.min(ratio, axis=0)
+    gstdv = numpy.std(ratio, axis=0)
 
-    '''
     # statistics alone with array, it calcs
     # the statistic for each time step
     tmean = numpy.mean(ratio, axis=1)
@@ -54,10 +53,9 @@ def calc_statistic(ratio):
     tminv = numpy.min(ratio, axis=1)
     tstdv = numpy.std(ratio, axis=1)
 
-    return (maxv, minv, mean, stdv, tmaxv, tminv, tmean, tstdv)
-    '''
-    return (maxv, minv, mean, stdv)
-
+    return (gmaxv, gminv, gmean, gstdv, tmaxv, tminv, tmean, tstdv)
+    #return (maxv, minv, mean, stdv)
+    #return stdv
 
 ## end of calc_statistic
 
@@ -88,8 +86,8 @@ def plot_hist(name, data, title = 'Distribution of Change Ratio'):
     plt.savefig('.'.join([name, 'pdf']), bbox_inches='tight')
     plt.clf()
 
-def plot_lines(fname, data, title = 'Change ratio', yup = None,\
-               ydown = None, xlabel = None, ylabel = None):
+def plot_lines(fname, data, title = 'Change ratio'\
+        , xlabel = None, ylabel = None):
     array = numpy.array(data)
     #style=['ro-', 'b*-', 'gs-', 'kD-', 'mx-'];
     style=['r', 'b', 'k', 'g', 'm'];
@@ -99,15 +97,19 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     else:
         (items, size) = array.shape
 
-    print 'items, size :', items, size
     x = numpy.array(range(size))
     plt.ticklabel_format(useOffset=False, style='plain')
     plt.xlim(0, size)
     
+    if array.max() < 0.01:
+        yup   = array.max() * 3
+        ydown = array.min() * 3
+    else: 
+        yup   = array.max() * 1.5
+        ydown = array.min() - 0.2
     if yup is not None and ydown is not None:
         plt.ylim(ydown, yup)
     
-    print 'dim: ', array.ndim
     if array.ndim > 1:
         for i in range(items):
             plot = plt.plot(x, array[i], style[i], label='Data Point %d'%i)
@@ -130,10 +132,8 @@ def plot_lines(fname, data, title = 'Change ratio', yup = None,\
     plt.clf()
 
 
-def plot_mean_stdv(fname, data, \
-                   Title = 'Mean and Stdv of Change Ratios for Each Location', \
-                   xlabel = None, mydown = None, myup = None, \
-                   sydown = None, syup = None):
+def plot_mean_stdv(fname, data, xlabel = None, \
+                   Title = 'Mean and Stdv of Change Ratios for Each Location'):
     array = numpy.array(data)
     (tmp, size) = array.shape
     x = numpy.array(range(size))
@@ -150,11 +150,19 @@ def plot_mean_stdv(fname, data, \
     if xlabel is not None:
         ax1.set_xlabel(xlabel)
 
+
+    mydown = array[0].min() * 3
+    myup   = array[0].max() * 3 
+
     plt.xlim(0, size)
     ax1.set_ylabel('Mean of Change Percentage (%)', color='r')
     if mydown is not None and myup is not None:
         ax1.set_ylim(mydown,myup)
     ax2.set_ylabel('Stdv of Change Percentage', color='b')
+    
+    sydown = array[1].min() * 3
+    sydown = 0 
+    syup   = array[1].max() * 3
     if sydown is not None and syup is not None:
         ax2.set_ylim(sydown,syup)
     ax1.legend(plots, labs)
@@ -185,85 +193,191 @@ if __name__ == '__main__':
     # storing the change ratio
     ratio_list = list()
 
-    # recording the mean value for each time step
-    tmean_list = list()
-    tstdv_list = list()
-
     while not datasets.is_done():
         print '\n\n Progress. Finished: %.02f%%' % (datasets.progress() * 100)
-        time.sleep(1)
+        #time.sleep(1)
         [prev, curr] = datasets.read(variable, 2)
         if prev is None or curr is None:
             print 'Finished'
             break
 
-        # calc and store the mean and stdv value for each time step
-        tmean_list.append(curr.mean()/prev.mean() - 1)
-        #tmean_list.append(abs(curr).mean()/abs(prev).mean() - 1)
-        tstdv_list.append(numpy.array(tmean_list).std())
-
         # calc and store the change ratio
         #tmp = abs(curr)/(abs(prev) + 1) - 1
-        tmp = (curr - prev)/(prev + 1)
+        tmp = (curr - prev)/(abs(prev) + 1)
         #tmp = (abs(curr) - abs(prev))/(abs(prev) + 1)
+        
         ratio_list.append(tmp)
         
-        if size is not None and datasets.get_timestep() == size:
-            print 'Finished with up to expected timesteps'
-            break
-
+    print '\n\n Progress. Finished: %.02f%%' % (datasets.progress() * 100)
     ratio = numpy.array(ratio_list)
-    #(maxc, minc, mean, stdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
-    (maxc, minc, mean, stdv) = calc_statistic(ratio)
+    (gmaxc, gminc, gmean, gstdv, tmax, tmin, tmean, tstdv) = calc_statistic(ratio)
 
-    tmean = numpy.array(tmean_list)
-    tstdv = numpy.array(tstdv_list)
 
-    indexes = stdv.argsort()
+    # threshold based on each point care about the [min, max] for each time step 
+    # among each pair of [min, max] for each time step to find [tmin, tmax] for
+    # global
+    plot_lines('threshold_p', [tmax, abs(tmin)], \
+            title='Max/min Ratio of Each Time Step', xlabel = 'Time Step')
+   
+    print 'tmax: ', tmax
+    print 'tmin: ', tmin
+    print 'tmean: ', tmean
+
+    # threhold based on average cares about mean value of each step, 
+    # and find threshold with max abs(mean) among time steps
+    plot_lines('threshold_l', tmean, title='Max Change of Each Time Step', \
+            xlabel = 'Time Step')
+
+
+    (steps, size) = ratio.shape
+    # calculate the statistic for each point based on a time window
+    # statistic on each point care about the predicts vaule against 
+    # real value for each point, here plot their diff and predicted 
+    # stdvs at location with max variations
+    win_size = 3
+    tmp_mean = list()
+    tmp_stdv = list()
+    for i in range(1, steps+1):
+        if i < win_size:
+            tmp_mean.append(numpy.mean(ratio[0:i, :], axis=0))
+            tmp_stdv.append(numpy.std(ratio[0:i, :], axis=0))
+        else:
+            tmp_mean.append(numpy.mean(ratio[i-win_size:i, :], axis=0))
+            tmp_stdv.append(numpy.std(ratio[i-win_size:i, :], axis=0))
+    pmean = numpy.array(tmp_mean)
+    pstdv = numpy.array(tmp_stdv)
+    pdiff = abs(pmean-ratio)
+    indexes = gstdv.argsort()
+    thresh = 2;
+    plot_lines('statistic_p', [pdiff[:, indexes[-1]], \
+            pstdv[:, indexes[-1]], pstdv[:, indexes[-1]]*thresh])
+    plot_lines('statistic_p_o', [pmean[:, indexes[-1]], ratio[:, indexes[-1]]])
+
+    # statitic on each location care predict value of each location
+    tmp_mean = list()
+    tmp_stdv = list()
+
+    size = tmean.size
+    #win_size = 5
+    for i in range(1,size+1):
+        if i < win_size:
+            tmp_mean.append(tmean[0:i].mean())
+            tmp_stdv.append(tmean[0:i].std())
+        else:
+            tmp_mean.append(tmean[i-win_size:i+1].mean())
+            tmp_stdv.append(tmean[i-win_size:i+1].std())
+    lmean = numpy.array(tmp_mean)
+    lstdv = numpy.array(tmp_stdv)
+    ldiff = abs(lmean-tmean)
+
+    plot_lines('statistic_l', [ldiff, lstdv, lstdv * thresh], \
+            xlabel='Time Step')
+    plot_lines('statistic_l_o', [lmean, tmean], xlabel='Time Step')
+
+	## linear cares about the predicted value and square err
+    #win_size = 5
+    x = numpy.array(range(win_size))
+    lstp_lst = list()
+    lste_lst = list()
+    for i in range(1, steps+1):
+        if i < win_size:
+            lstp_lst.append(numpy.mean(ratio[0:i, :], axis=0))
+            lste_lst.append(numpy.std(ratio[0:i, :], axis=0))
+        else:
+            data = ratio[i-win_size:i, :]
+            Coeff = numpy.c_[x, numpy.ones_like(x)]
+            r = numpy.linalg.lstsq(Coeff, data)
+            a,b = r[0] 
+            err = r[1]
+            lstp_lst.append(a*win_size+b)
+            lste_lst.append(numpy.std(ratio[i-win_size:i, :], axis=0))
+            
+    lstp = numpy.array(lstp_lst)	
+    lste = numpy.array(lste_lst)	
+    lstdiff = abs(lstp - ratio)
+    plot_lines('linear_p', [lstdiff[:, indexes[-1]], \
+            lste[:, indexes[-1]], lste[:, indexes[-1]]*thresh], \
+            title='Difference of predict value and original value+err')
     
-    plot_lines('line', ratio[:, indexes[-1]], title='Change Ratio at Loc (%d)' % indexes[-1])
-    plot_hist('maxhist', ratio[:, indexes[-1]], title='Distribution of Change Ratio' \
-              + ' at the location with max stdv')
-    plot_hist('overalhist', ratio, title='Distribution of Change Ration for Whole Data Set')
+    plot_lines('linear_p_o', [lstp[:, indexes[-1]], ratio[:, indexes[-1]]], \
+            title='Difference of predict value and original value+err')
+  
+    print 'original_p:'
+    print ratio[0:15,indexes[-1]]
+    print 'linear_p:'
+    print lstp[0:15, indexes[-1]]
+    print 'linear_p_diff:'
+    print lstdiff[0:15,indexes[-1]]
 
-    locations = [indexes[stdv.size/4], indexes[stdv.size/2-20], indexes[stdv.size/2]]
-    print 'locations:', locations
-    points = ratio[:, locations].transpose() * 100
-
-    print "points shape", points.shape
-
-    plot_lines('location', points, \
-            title="Changes Ratios of Data Points along Temporal Dimension" \
-            , ydown=-0.01, yup = 0.01)
-    '''
-    plot_mean_stdv('distrib', [mean[0:2000], stdv[0:2000]], \
-            Title = 'Mean and Stdv along Temperal Dimension for Each Data Point', \
-            mydown = -1.3, myup = -0.3, sydown= -0.1, syup = 0.1)
-    '''
-    plot_mean_stdv('distrib', [mean, stdv], \
-            Title = 'Mean and Stdv along Temperal Dimension'+\
-            ' for Each Data Point')
-    '''
-    \
-            mydown = -1.3, myup = -0.5, sydown = -0.01, syup = 0.01);
-    '''
+    size = tmean.size
+    #win_size = 5
+    x = numpy.array(range(win_size))
+    lstl_lst = list()
+    lste_lst = list()
+    for i in range(1, size+1):
+        if i < win_size:
+            lstl_lst.append(tmean[0:i].mean())
+            lste_lst.append(tmean[0:i].std())
+        else:
+            data = tmean[i-win_size:i]
+            Coeff = numpy.c_[x, numpy.ones_like(x)]
+            r = numpy.linalg.lstsq(Coeff, data)
+            a,b = r[0]
+            err = r[1]
+            lstl_lst.append(a*win_size+b)
+            lste_lst.append(tmean[i-win_size:i].std())
+    lstl = numpy.array(lstl_lst)
+    lste = numpy.array(lste_lst)
+    lstdiff = abs(lstl - tmean)
+    plot_lines('linear_l', [lstdiff, lste, lste*thresh], \
+            title='Difference of predict value and original value+err')
+    plot_lines('linear_l_o', [lstl, tmean], \
+            title='Difference of predict value and original value+err')
+    print 'original_p:'
+    print tmean[0:15]
+    print 'linear_l:'
+    print lstl[0:15]
+    print 'linear_l_diff:'
+    print lstdiff[0:15]
+    print lstl[0:15]
 
     ''' 
-    plot_mean_stdv('average', [tmean, tstdv], \
-            Title='Mean and Stdv of Relative Changes for Each Time Step', \
-            xlabel='Time Step', mydown = -0.8, myup = -0.5, \
-            sydown = 0.3, syup = 0.5)
-    '''
+    plot_lines('line', ratio[:, indexes[-1]], \
+            title='Change Ratio at Loc (%d)' % indexes[-1])
+    plot_hist('maxhist', ratio[:, indexes[-1]], \
+            title='Distribution of Change Ratio' \
+              + ' at the location with max stdv')
+    plot_hist('overalhist', ratio, \
+            title='Distribution of Change Ration for Whole Data Set')
+
+    locations = [indexes[stdv.size/4], indexes[stdv.size/2-20], \
+            indexes[stdv.size/2]]
+    #multiply 100 for percentage
+    
+    points = ratio[:, locations].transpose() * 100
+
+    plot_lines('location', points, \
+            title="Changes Ratios of Data Points along Temporal Dimension")
 
     plot_mean_stdv('average', [tmean, tstdv], \
             Title='Mean and Stdv of Relative Changes for Each Time Step', \
             xlabel='Time Step')
     
-    plot_lines('stdv', stdv, \
+    plot_lines('stdv', stdv[:210000], \
             title="Standard Variation of each Data Point" \
-            , ydown = 0, yup = 0.004, ylabel='Standard Variation'\
+            , ylabel='Standard Variation'\
             , xlabel='Data Points')
-    '''
-    mydown=0.01, myup = 0.01, \
-            sydown=0.0, syup = 0.01) 
-    '''
+    print 'tstdv :', tstdv
+    
+   
+    print 'tmean', tmean
+    print 'mean of tmean', mean_of_tmean
+
+    plot_lines('tmean_mean', [tmean, numpy.array(mean_of_tmean), \
+        numpy.array(stdv_of_tmean), numpy.array(diffs_mean_tmean)], \
+            title='tmean+mean of tmean', \
+            xlabel='Time Step')
+
+    print 'stdv of tmean', stdv_of_tmean
+    print 'diff tmean m ', diffs_mean_tmean
+    '''   

@@ -8,18 +8,30 @@ import pdb
 
 import fio
 
-
 def main(argv):
     if len(argv) < 2:
         sys.exit('Usage: %s work-directory [variable-name]' % argv[0])
-    if not os.path.exists(argv[1]):
-        sys.exit('ERROR: work-directory %s was not found!' % argv[1])
+    var = 'all'
+    if len(argv) == 3:
+        var = argv[2]
 
     CWD = os.getcwd()
     workspace = os.path.join(CWD, argv[1])
-    variable = 'all'
-    if len(argv) > 2: 
-        variable = argv[2]
+    dirs = [ x for x in os.listdir(workspace) \
+            if os.path.isdir(os.path.join(workspace, x))]
+    if len(dirs) == 0:
+        sys.exit('the working directory is empty');
+
+    for d in dirs:
+        print d
+        path = os.path.join(workspace, d)
+        submain(path, var)
+
+def submain(workspace, var='all'):
+    if not os.path.exists(workspace):
+        sys.exit('ERROR: work-directory %s was not found!' % workspace)
+
+    variable = var
     
     print 'workspace: %s, variable: %s' % (workspace, variable)
 
@@ -55,9 +67,11 @@ def main(argv):
         normal_files = normal_datasets.get_files()
         faulty_files = faulty_datasets.get_files()
 
+        '''
         if normal_files != faulty_files:
             print 'data from the two dir not match'
-            break
+            continue
+        '''
 
         # check whehter the two data set has the same variables
         normal_variables = normal_datasets.get_variables()
@@ -66,7 +80,7 @@ def main(argv):
         if normal_variables != faulty_variables: 
             print 'the variable in data set (%s) not match' \
                     'with normal execution' % i
-            break
+            continue
 
         if variable != 'all' and variable not in normal_variables:
             sys.exit('error, variable %s not found' % variable)
@@ -89,7 +103,7 @@ def main(argv):
 
             print "looking at variable %s" % var
 
-            while not normal_datasets.is_done():
+            while not faulty_datasets.is_done():
 
                 faulty = 0;
                 [ndata]= normal_datasets.read(var)
@@ -107,22 +121,23 @@ def main(argv):
                 mean_diff = 0.0
                 total = 0
                 count = 0
+
                 for i in range(ndata.size):
                     if abs(ndata[i] - fdata[i]) > 0.000001:
                         var_faulty = 1
                         total = total + 1
-                        #tmp = abs(1 - fdata[i]/(abs(ndata[i]) + 1))
-                        tmp = abs(fdata[i] - ndata[i]) /(abs(ndata[i]) + 1)
+                        tmp = abs(ndata[i] - fdata[i])/(abs(ndata[i]) + 1)
                         if tmp > max_diff:
                             max_diff = tmp;
                         if tmp < min_diff:
                             min_diff = tmp
                         mean_diff = mean_diff + tmp
-                        count = count + 1
-            
+                        count = count +1
+           
+                mean_diff = mean_diff/ndata.size
                 if count > 0:
                     mean_diff = mean_diff/count
-                #mean_diff = (ndata.mean() - fdata.mean())/ndata.mean();
+                #mean_diff = (ndata.mean()-fdata.mean())/ndata.mean()
                 res_tmp = dict()
                 timestep = normal_datasets.timestep();
                 res_tmp['step'] = timestep

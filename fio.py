@@ -84,7 +84,7 @@ class DataBase():
     # read a variable from a NetCDF file 
     def __nc_read(self, fname, v):
         try:
-            fh = nf.netcdf_file(fname, 'r', mmap=False)
+            fh = nf.netcdf_file(fname, 'r', mmap=True)
         except:
             sys,exit('error when reading var %s from file %s' %(variable, fname))
         if v not in fh.variables:
@@ -92,7 +92,7 @@ class DataBase():
             fh.close()
             return None
         else:
-            data = fh.variables[v][:].ravel()
+            data = fh.variables[v][:].copy().ravel()
             fh.close()
             return data
 
@@ -110,14 +110,14 @@ class DataBase():
 
     # read a variable data from BP file
     def __bp_read(self, fname, variable):
-        try:
+        if os.path.exists(fname) and os.path.isfile(fname):
             fh = adios.file(fname)
             v = fh.var[variable]
             data = v.read().ravel()
-            return data
             fh.close()
-        except:
-            print "error happend: var=%s file%s" % (variable, fname)
+            return data
+        else:
+            print "error happend: var%s file:%s" % (variable, fname)
 
     def __bp_variables(self, fname):
         name = list()

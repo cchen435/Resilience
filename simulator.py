@@ -6,17 +6,20 @@ import os
 
 import fio
 import detector
+import pdb
 
 
 def main():
-    usage='usage: %prog workspace method -s windows -t threshold -v variable'
+    usage='usage: %prog workspace method -s windows -g groups -t threshold -v variable'
     parser = OptionParser(usage=usage)
     parser.add_option('-s', '--size', type='int', dest='win',
             help='window size')
-    parser.add_option('-t', '--threshold', type='string', 
+    parser.add_option('-t', '--threshold', type='float', 
             dest='thresh', help='threhold value')
     parser.add_option('-v', '--variables', type='string', 
             dest='var', help='variable to evaluate')
+    parser.add_option('-g', '--groups', type='int', 
+            dest='groups', help='groups')
 
     (opts, args) = parser.parse_args()
     opts = vars(opts)
@@ -34,28 +37,31 @@ def main():
     win_size = opts['win']
     threshold = opts['thresh']
     variable = opts['var']
+    groups = opts['groups']
+
     print workspace, method, win_size, threshold, variable
 
-    datasets = fio.DataBase(workspace, variable)
+    datasets = fio.DataBase(workspace)
     #datasets.list_variables()
 
-    detect = detector.Detector(method, win_size, threshold)
+    detect = detector.Detector(method, win_size, threshold, groups)
 
     faults = 0
     faults_steps = list()
-    while not datasets.done():
-        print '\n\nFinished %.2f%%' % (datasets.get_progress() * 100)
-        (prev, curr)=datasets.get()
+    while not datasets.is_done():
+        print '\n\nFinished %.2f%%' % (datasets.progress() * 100)
+        [prev, curr]=datasets.read(variable, 2)
         if prev is None or curr is None:
             print 'data is none'
             continue
 
-        ratio = abs(curr)/(abs(prev) + 1) - 1
+        ratio = (curr - prev)/(abs(prev) + 1) 
+        #pdb.set_trace()
         result = detect.detect(ratio)
         if result is True:
             faults += 1
-            faults_steps.append(datasets.get_curr())
-            print 'detect error at timestep %d' % datasets.get_curr()
+            faults_steps.append(datasets.timestep())
+            print 'detect error at timestep %d' % datasets.timestep()
 
     print 'number of faults %d, total steps %d' % (faults, datasets.get_timesteps())
     print 'time steps where a fault is detected: ', faults_steps

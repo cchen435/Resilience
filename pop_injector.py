@@ -40,7 +40,7 @@ def move(normal, src, dst, var, folder):
 
     dst = os.path.join(dirname, '0')
 
-    while not os.path.exists(dst):
+    if not os.path.exists(dst):
         cmd = ' '.join(['ln -s', normal, dst])
         os.system(cmd);
     ''' end of moving data '''
@@ -48,19 +48,19 @@ def move(normal, src, dst, var, folder):
 
 if __name__ == "__main__":
     usage = "usage: %prog fault-file, exec, args for exec"
-    prefix = '/tmp/cchen/pop/'
-    r_src  = os.path.join(prefix, 'restart')
-    d_src  = os.path.join(prefix, 'diag')
+    prefix = '/net/hp101/cchen435/pop/'
+    #r_src  = os.path.join(prefix, 'restart')
+    #d_src  = os.path.join(prefix, 'diag')
     t_src  = os.path.join(prefix, 'tavg')
 
-    prefix = '/tmp/cchen/POP'
-    r_dst  = os.path.join(prefix, 'restart')
-    d_dst  = os.path.join(prefix, 'diag')
+    prefix = '/net/hp101/cchen435/POP'
+    #r_dst  = os.path.join(prefix, 'restart')
+    #d_dst  = os.path.join(prefix, 'diag')
     t_dst  = os.path.join(prefix, 'tavg')
 
-    r_normal = '/tmp/cchen/POP/normal/restart/'
-    d_normal = '/tmp/cchen/POP/normal/diag/'
-    t_normal = '/tmp/cchen/POP/normal/tavg/'
+    t_normal = '/net/hp101/cchen435/POP/tavg20'
+    #d_normal = '/tmp/cchen/POP/normal/diag/'
+    #t_normal = '/tmp/cchen/POP/normal/tavg/'
 
     parser = OptionParser(usage=usage)
     (opts, args) = parser.parse_args()
@@ -91,12 +91,22 @@ if __name__ == "__main__":
         step = fault['step']['val']
         var = fault['mem']
         fault_val = fault['fault']
+        point = fault['point']
+
         s = gdbmi.Session(target = target, args = exec_args,\
                         language = 'fortran')
-        s.start()
-        s.watch_insert(step_var, step)
+        
+        # start the application and stop at entry point, e.g. main
+        s.start()  
+        # setup the time-step when the fault will be injected
+        s.watch_insert(step_var, step) 
+        # execute until the time-step where fault is expected to be injected
+        s.exec_continue()
+        # set up the execution point where the fault is injected
+        s.break_insert(point)
         s.exec_continue()
         s.inject(var, fault_val)
+        s.break_delete()
         s.exec_continue()
         s.finish() 
         
@@ -108,14 +118,14 @@ if __name__ == "__main__":
         var = var[:var.find('(')]
         if currvar != var:
             currvar = var
-            folder = 1
+            folder = 0 
         
+        folder = folder+1
         
         #move(r_normal, r_src, r_dst, var, folder)
-        move(d_normal, d_src, d_dst, var, folder)
+        #move(d_normal, d_src, d_dst, var, folder)
         move(t_normal, t_src, t_dst, var, folder)
 
-        folder = folder+1
         time.sleep(2)
         print '\n\n'
 
