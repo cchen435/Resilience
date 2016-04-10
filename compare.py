@@ -57,7 +57,7 @@ def main(argv):
 
         if normal_files != faulty_files:
             print 'data from the two dir not match'
-            break
+            continue
 
         # check whehter the two data set has the same variables
         normal_variables = normal_datasets.get_variables()
@@ -66,7 +66,7 @@ def main(argv):
         if normal_variables != faulty_variables: 
             print 'the variable in data set (%s) not match' \
                     'with normal execution' % i
-            break
+            continue
 
         if variable != 'all' and variable not in normal_variables:
             sys.exit('error, variable %s not found' % variable)
